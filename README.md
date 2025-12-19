@@ -503,6 +503,58 @@ forge tunnel
 
 ---
 
+## ⚡ Quick Start (Dashboard + API)
+
+For the **React Dashboard** and **Express API** with real Supabase data:
+
+### 1. Database Setup
+
+```bash
+# Run supabase/schema.sql in Supabase SQL Editor
+# Project: unmftusdjijgbprtzfir.supabase.co
+```
+
+### 2. Start Backend API
+
+```bash
+cd api
+npm install
+npm run dev
+# API runs on http://localhost:3001
+```
+
+### 3. Start Frontend Dashboard
+
+```bash
+cd static/dashboard
+bun install
+bun dev
+# Dashboard runs on http://localhost:3000
+```
+
+### 4. Verify Connection
+
+```bash
+curl http://localhost:3001/api/health
+# Should return: {"status":"healthy","supabase":"connected"}
+```
+
+### Environment Variables
+
+**API (`api/.env`):**
+```env
+PORT=3001
+SUPABASE_URL=https://unmftusdjijgbprtzfir.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVubWZ0dXNqZGlqZ2JwcnR6ZmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNDg0ODcsImV4cCI6MjA4MTcyNDQ4N30.kU8eoXF5voC6nn_YXFvxWM4a42gzzWtJ7I6YdZsUgaM
+```
+
+**Frontend (`static/dashboard/.env`):**
+```env
+VITE_API_URL=http://localhost:3001
+```
+
+---
+
 ## 🔧 Configuration
 
 ### Environment Variables

@@ -1,0 +1,53 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "version": 2,
+    "builds": [
+        {
+            "src": "api/server.js",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "static/dashboard/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "/api/server.js"
+        },
+        {
+            "src": "/assets/(.*)",
+            "dest": "/static/dashboard/dist/assets/$1"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/static/dashboard/dist/$1"
+        }
+    ],
+    "env": {
+        "NODE_ENV": "production"
+    },
+    "headers": [
+        {
+            "source": "/api/(.*)",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "Content-Type, Authorization"
+                }
+            ]
+        }
+    ]
+}
