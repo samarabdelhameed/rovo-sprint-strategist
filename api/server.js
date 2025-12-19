@@ -9,6 +9,7 @@ import cors from 'cors';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient.js';
 import sprintAnalyzer from './services/sprintAnalyzer.js';
 import aiService from './services/aiService.js';
+import localDB, { queries } from './services/localDatabase.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -119,36 +120,27 @@ app.get('/api/issues', async (req, res) => {
  */
 app.patch('/api/issues/:id', async (req, res) => {
     try {
-        if (!supabase) {
-            return res.json({ success: true, message: 'Mock mode - update simulated' });
+        const { status } = req.body;
+        
+        // Update in local database
+        const completedAt = status === 'done' ? new Date().toISOString() : null;
+        const result = queries.updateIssue.run(status, completedAt, req.params.id);
+        
+        // Get updated issue - need to get all issues for the sprint first
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        const updatedIssue = sprintData.issues.find(i => i.id === req.params.id);
+        
+        if (updatedIssue) {
+            console.log(`✅ Updated issue ${updatedIssue.key} to status: ${status}`);
         }
 
-        const { status, assignee_id, story_points, priority } = req.body;
-        const updates = { updated_at: new Date().toISOString() };
-
-        if (status) {
-            updates.status = status;
-            if (status === 'done') updates.completed_at = new Date().toISOString();
-            if (status === 'blocked') updates.blocked_since = new Date().toISOString();
-        }
-        if (assignee_id) updates.assignee_id = assignee_id;
-        if (story_points !== undefined) updates.story_points = story_points;
-        if (priority) updates.priority = priority;
-
-        const { data, error } = await supabase
-            .from('issues')
-            .update(updates)
-            .eq('id', req.params.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        // Log activity
-        await logActivity(data.sprint_id, null, data.id, 'updated', `Updated ${data.key}`);
-
-        res.json({ success: true, data });
+        res.json({ 
+            success: true, 
+            data: updatedIssue,
+            message: `Issue updated to ${status}` 
+        });
     } catch (error) {
+        console.error('Error updating issue:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -345,46 +337,19 @@ app.get('/api/pitstop', async (req, res) => {
     try {
         const sprintData = await sprintAnalyzer.getActiveSprintData();
 
-        // Get existing recommendations from DB
-        let existingRecs = [];
-        if (supabase) {
-            const { data } = await supabase
-                .from('pit_stop_recommendations')
-                .select('*')
-                .eq('sprint_id', sprintData.sprint.id)
-                .eq('status', 'pending')
-                .order('priority');
-            existingRecs = data || [];
-        }
+        // Get existing recommendations from local database
+        const existingRecs = queries.getPitStopRecommendations.all(sprintData.sprint.id);
 
-        // If no recent recommendations, generate new ones
-        if (existingRecs.length === 0) {
-            const aiRecs = await aiService.generatePitStopRecommendations(sprintData);
-
-            // Save to database
-            if (supabase && aiRecs.length > 0) {
-                const toInsert = aiRecs.map((rec, idx) => ({
-                    sprint_id: sprintData.sprint.id,
-                    recommendation_type: rec.type || 'other',
-                    title: rec.title,
-                    description: rec.description,
-                    priority: idx + 1,
-                    impact_score: parseInt(rec.impact) || 10,
-                    affected_issues: rec.affectedIssues || [],
-                    ai_generated: true
-                }));
-
-                await supabase.from('pit_stop_recommendations').insert(toInsert);
-                existingRecs = toInsert;
-            } else {
-                existingRecs = aiRecs;
-            }
-        }
+        // Transform recommendations (parse JSON fields)
+        const recommendations = existingRecs.map(rec => ({
+            ...rec,
+            affected_issues: JSON.parse(rec.affected_issues || '[]')
+        }));
 
         res.json({
             success: true,
             data: {
-                recommendations: existingRecs,
+                recommendations,
                 sprintHealth: sprintData.healthScore,
                 urgencyLevel: sprintData.healthScore < 50 ? 'critical'
                     : sprintData.healthScore < 70 ? 'high'
@@ -392,6 +357,7 @@ app.get('/api/pitstop', async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Error getting pit-stop recommendations:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -401,20 +367,18 @@ app.get('/api/pitstop', async (req, res) => {
  */
 app.post('/api/pitstop/:id/apply', async (req, res) => {
     try {
-        if (!supabase) {
-            return res.json({ success: true, message: 'Mock mode - recommendation applied' });
-        }
-
-        const { data, error } = await supabase
-            .from('pit_stop_recommendations')
-            .update({ status: 'applied', applied_at: new Date().toISOString() })
-            .eq('id', req.params.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        res.json({ success: true, data });
+        // Apply recommendation in local database
+        queries.applyRecommendation.run(req.params.id);
+        
+        console.log(`✅ Applied pit-stop recommendation: ${req.params.id}`);
+        
+        res.json({ 
+            success: true, 
+            message: 'Recommendation applied successfully',
+            data: { id: req.params.id, status: 'applied' }
+        });
     } catch (error) {
+        console.error('Error applying recommendation:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -456,23 +420,15 @@ app.get('/api/leaderboard', async (req, res) => {
             member.rank = idx + 1;
         });
 
-        // Get achievements
-        let achievements = [];
-        if (supabase) {
-            const { data } = await supabase
-                .from('achievements')
-                .select('*, member:team_members(*)')
-                .eq('sprint_id', sprintData.sprint.id)
-                .order('earned_at', { ascending: false });
-            achievements = data || [];
-        } else {
-            // Mock achievements
-            achievements = [
-                { badge_name: 'Pole Position', badge_icon: '🏎️', member: { name: 'Sarah Johnson' } },
-                { badge_name: 'Fast Finisher', badge_icon: '⚡', member: { name: 'Lisa Anderson' } },
-                { badge_name: 'Clean Code', badge_icon: '🧹', member: { name: 'Mike Chen' } },
-            ];
-        }
+        // Get achievements from local database
+        const rawAchievements = queries.getAchievements.all(sprintData.sprint.id);
+        const achievements = rawAchievements.map(ach => ({
+            badge_name: ach.badge_name,
+            badge_icon: ach.badge_icon,
+            points: ach.points,
+            earned_at: ach.earned_at,
+            member: { name: ach.member_name }
+        }));
 
         res.json({
             success: true,
@@ -483,6 +439,7 @@ app.get('/api/leaderboard', async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Error getting leaderboard:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -622,6 +579,26 @@ app.post('/api/ai/ask', async (req, res) => {
 });
 
 // =====================================================
+// NEW FEATURE ENDPOINTS
+// =====================================================
+
+// Import new route modules
+import alertSettingsRouter from './routes/alertSettings.js';
+import recommendationsRouter from './routes/recommendations.js';
+import aiChatRouter from './routes/aiChat.js';
+import sprintGoalsRouter from './routes/sprintGoals.js';
+import projectSetupRouter from './routes/projectSetup.js';
+
+// Use new routes
+app.use('/api/alert-settings', alertSettingsRouter);
+app.use('/api/recommendations', recommendationsRouter);
+app.use('/api/apply-recommendation', recommendationsRouter);
+app.use('/api/ai-chat', aiChatRouter);
+app.use('/api/test-alert', alertSettingsRouter);
+app.use('/api/sprint-goals', sprintGoalsRouter);
+app.use('/api/project-setup', projectSetupRouter);
+
+// =====================================================
 // SETTINGS ENDPOINTS
 // =====================================================
 
@@ -707,18 +684,43 @@ app.use((req, res) => {
 // =====================================================
 
 app.listen(PORT, () => {
-    console.log(`
+    // Initialize local database to check if it's working
+    try {
+        localDB.initializeDatabase();
+        console.log(`
 🏎️  ═══════════════════════════════════════════════════
    ROVO SPRINT STRATEGIST API
    ═══════════════════════════════════════════════════
    
    🚀 Server running on: http://localhost:${PORT}
    📊 Health check:      http://localhost:${PORT}/api/health
-   🗄️  Supabase:          ${isSupabaseConfigured() ? '✅ Connected' : '⚠️  Mock Mode'}
+   🗄️  Database:         ✅ Local Cache (Jira Data Only)
+   🔗 Jira Integration:  ✅ Real API Connection
+   🤖 AI Service:        ${process.env.ANTHROPIC_API_KEY ? '✅ Ready' : '⚠️  Fallback Mode'}
+   
+   📋 Next Steps:
+   1. Open http://localhost:3000
+   2. Go to Project Setup
+   3. Configure Jira connection
+   4. Sync your sprint data
+   
+   ═══════════════════════════════════════════════════
+`);
+    } catch (error) {
+        console.log(`
+🏎️  ═══════════════════════════════════════════════════
+   ROVO SPRINT STRATEGIST API
+   ═══════════════════════════════════════════════════
+   
+   🚀 Server running on: http://localhost:${PORT}
+   📊 Health check:      http://localhost:${PORT}/api/health
+   🗄️  Database:         ❌ Error: ${error.message}
+   🔗 Jira Integration:  ⚠️  Configure in Project Setup
    🤖 AI Service:        ${process.env.ANTHROPIC_API_KEY ? '✅ Ready' : '⚠️  Fallback Mode'}
    
    ═══════════════════════════════════════════════════
 `);
+    }
 });
 
 export default app;

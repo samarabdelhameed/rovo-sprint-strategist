@@ -1,43 +1,101 @@
 /**
  * 📊 Sprint Analyzer Service
- * Core business logic for sprint analysis
+ * Core business logic for sprint analysis with real Jira integration
  */
 import { supabase, getAll } from './supabaseClient.js';
+import localDB, { queries } from './localDatabase.js';
+import jiraService from './jiraService.js';
 
 /**
  * Get active sprint with all related data
  */
 export async function getActiveSprintData() {
-    if (!supabase) return getMockSprintData();
-
     try {
-        // Get active sprint
-        const { data: sprint, error: sprintError } = await supabase
-            .from('sprints')
-            .select('*')
-            .eq('status', 'active')
-            .single();
-
-        if (sprintError || !sprint) {
-            console.error('No active sprint found:', sprintError);
-            return getMockSprintData();
+        // Initialize local database schema
+        localDB.initializeDatabase();
+        
+        // Check if Jira is configured
+        if (!jiraService.isConfigured()) {
+            return {
+                error: 'JIRA_NOT_CONFIGURED',
+                message: 'Please configure Jira connection in Project Setup',
+                sprint: null,
+                issues: [],
+                team: [],
+                healthScore: 0
+            };
+        }
+        
+        // Try to sync data from Jira
+        try {
+            await jiraService.syncAllData();
+        } catch (syncError) {
+            console.warn('⚠️ Failed to sync from Jira, using cached data:', syncError.message);
+        }
+        
+        // Get sprint from local database (either fresh from Jira or cached)
+        const sprint = queries.getActiveSprint.get('active');
+        
+        if (!sprint) {
+            return {
+                error: 'NO_ACTIVE_SPRINT',
+                message: 'No active sprint found. Please start a sprint in Jira.',
+                sprint: null,
+                issues: [],
+                team: [],
+                healthScore: 0
+            };
         }
 
-        // Get all related data in parallel
-        const [issuesResult, metricsResult, teamResult, activitiesResult] = await Promise.all([
-            supabase.from('issues').select('*, assignee:team_members(*)').eq('sprint_id', sprint.id),
-            supabase.from('sprint_metrics').select('*').eq('sprint_id', sprint.id).order('recorded_at', { ascending: false }).limit(10),
-            supabase.from('team_members').select('*').eq('is_active', true),
-            supabase.from('team_activities').select('*, member:team_members(*)').eq('sprint_id', sprint.id).order('created_at', { ascending: false }).limit(20)
-        ]);
+        // Get all related data
+        const rawIssues = queries.getSprintIssues.all(sprint.id);
+        const metrics = queries.getSprintMetrics.all(sprint.id);
+        const team = queries.getTeamMembers.all();
+        const rawActivities = queries.getTeamActivities.all(sprint.id);
 
-        const issues = issuesResult.data || [];
-        const metrics = metricsResult.data || [];
-        const team = teamResult.data || [];
-        const activities = activitiesResult.data || [];
+        // Transform issues to include assignee data
+        const issues = rawIssues.map(issue => ({
+            id: issue.id,
+            key: issue.key,
+            title: issue.title,
+            description: issue.description,
+            status: issue.status,
+            story_points: issue.story_points,
+            assignee_id: issue.assignee_id,
+            priority: issue.priority,
+            issue_type: issue.issue_type,
+            blocked_reason: issue.blocked_reason,
+            blocked_since: issue.blocked_since,
+            created_at: issue.created_at,
+            updated_at: issue.updated_at,
+            completed_at: issue.completed_at,
+            assignee: issue.assignee_id ? {
+                id: issue.assignee_id,
+                name: issue.assignee_name,
+                email: issue.assignee_email,
+                avatar: issue.assignee_avatar
+            } : null
+        }));
+
+        // Transform activities
+        const activities = rawActivities.map(activity => ({
+            id: activity.id,
+            sprint_id: activity.sprint_id,
+            member_id: activity.member_id,
+            action: activity.action,
+            description: activity.description,
+            created_at: activity.created_at,
+            member: activity.member_id ? {
+                name: activity.member_name,
+                avatar: activity.member_avatar
+            } : null
+        }));
 
         // Calculate current metrics
         const calculatedMetrics = calculateSprintMetrics(sprint, issues, team);
+
+        console.log(`✅ REAL DATA LOADED: ${issues.length} issues, ${team.length} team members, health score: ${calculatedMetrics.healthScore}`);
+        console.log(`📊 Sprint: "${sprint.name}" | Completed: ${calculatedMetrics.issuesCompleted}/${calculatedMetrics.issuesTotal} | Points: ${calculatedMetrics.completedPoints}/${calculatedMetrics.totalPoints}`);
 
         return {
             sprint,
@@ -48,8 +106,20 @@ export async function getActiveSprintData() {
             ...calculatedMetrics
         };
     } catch (error) {
-        console.error('Error fetching sprint data:', error);
-        return getMockSprintData();
+        console.error('❌ Error fetching sprint data from local database:', error);
+        // Force re-initialization and try again
+        try {
+            localDB.initializeDatabase();
+            const sprint = queries.getActiveSprint.get('active');
+            if (sprint) {
+                console.log('✅ Database re-initialized successfully');
+                // Retry the whole function
+                return getActiveSprintData();
+            }
+        } catch (retryError) {
+            console.error('❌ Failed to recover database:', retryError);
+        }
+        throw new Error('Failed to load real sprint data');
     }
 }
 

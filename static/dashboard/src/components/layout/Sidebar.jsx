@@ -11,7 +11,12 @@ import {
     MessageSquare,
     Zap,
     ChevronLeft,
-    Sparkles
+    Sparkles,
+    Cog,
+    Bell,
+    Target,
+    Bot,
+    Wrench
 } from 'lucide-react'
 
 const menuItems = [
@@ -21,6 +26,14 @@ const menuItems = [
     { path: '/leaderboard', icon: Trophy, label: 'Leaderboard', badge: null },
     { path: '/analytics', icon: BarChart3, label: 'Analytics', badge: null },
     { path: '/standup', icon: MessageSquare, label: 'Standup', badge: 'NEW' },
+]
+
+const newFeatures = [
+    { path: '/project-setup', icon: Cog, label: 'Project Setup', badge: 'NEW' },
+    { path: '/sprint-goals', icon: Target, label: 'Sprint Goals', badge: null },
+    { path: '/recommendations', icon: Wrench, label: 'Recommendations', badge: '5' },
+    { path: '/ai-chat', icon: Bot, label: 'AI Assistant', badge: null },
+    { path: '/alert-settings', icon: Bell, label: 'Alert Settings', badge: null },
 ]
 
 const bottomItems = [
@@ -154,6 +167,80 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                         </NavLink>
                     ))}
                 </div>
+
+                {/* New Features Section */}
+                <AnimatePresence>
+                    {isOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="mt-6"
+                        >
+                            <span className="px-4 text-xs font-medium text-text-muted uppercase tracking-wider">
+                                New Features
+                            </span>
+                            <div className="mt-3 space-y-1">
+                                {newFeatures.map((item) => (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        className={({ isActive }) => `
+                            group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                            ${isActive
+                                                ? 'bg-accent/10 text-accent'
+                                                : 'text-text-secondary hover:text-text-primary hover:bg-dark-700'
+                                            }
+                          `}
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                <motion.div
+                                                    whileHover={{ scale: 1.1 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    className="relative"
+                                                >
+                                                    <item.icon className="w-5 h-5" />
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="activeIndicatorNew"
+                                                            className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r-full"
+                                                        />
+                                                    )}
+                                                </motion.div>
+
+                                                <motion.span
+                                                    initial={{ opacity: 0, x: -10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -10 }}
+                                                    className="font-medium flex-1"
+                                                >
+                                                    {item.label}
+                                                </motion.span>
+
+                                                {item.badge && (
+                                                    <motion.span
+                                                        initial={{ scale: 0 }}
+                                                        animate={{ scale: 1 }}
+                                                        className={`
+                                px-2 py-0.5 text-xs font-bold rounded-full
+                                ${item.badge === 'NEW'
+                                                                ? 'bg-accent text-white'
+                                                                : 'bg-dark-600 text-text-secondary'
+                                                            }
+                              `}
+                                                    >
+                                                        {item.badge}
+                                                    </motion.span>
+                                                )}
+                                            </>
+                                        )}
+                                    </NavLink>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </nav>
 
             {/* Bottom Items */}
@@ -202,9 +289,12 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                             <p className="text-xs text-text-muted mb-3">
                                 Ask anything about your sprint
                             </p>
-                            <button className="w-full btn-glow text-sm py-2">
+                            <NavLink 
+                                to="/ai-chat"
+                                className="w-full btn-glow text-sm py-2 block text-center"
+                            >
                                 Ask Rovo
-                            </button>
+                            </NavLink>
                         </motion.div>
                     )}
                 </AnimatePresence>

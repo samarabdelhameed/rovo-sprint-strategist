@@ -317,7 +317,6 @@ export default function Settings() {
                                 className="bg-dark-600 border border-dark-500 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-accent"
                             >
                                 <option value="en">English</option>
-                                <option value="ar">العربية</option>
                                 <option value="es">Español</option>
                                 <option value="fr">Français</option>
                                 <option value="de">Deutsch</option>

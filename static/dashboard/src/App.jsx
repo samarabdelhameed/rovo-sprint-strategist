@@ -11,6 +11,11 @@ import Leaderboard from './pages/Leaderboard'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import Standup from './pages/Standup'
+import ProjectSetup from './pages/ProjectSetup'
+import AlertSettings from './pages/AlertSettings'
+import ApplyRecommendations from './pages/ApplyRecommendations'
+import AIChat from './pages/AIChat'
+import SprintGoals from './pages/SprintGoals'
 
 function AppContent() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -63,6 +68,11 @@ function AppContent() {
                             <Route path="/analytics" element={<Analytics />} />
                             <Route path="/standup" element={<Standup />} />
                             <Route path="/settings" element={<Settings />} />
+                            <Route path="/project-setup" element={<ProjectSetup />} />
+                            <Route path="/alert-settings" element={<AlertSettings />} />
+                            <Route path="/recommendations" element={<ApplyRecommendations />} />
+                            <Route path="/ai-chat" element={<AIChat />} />
+                            <Route path="/sprint-goals" element={<SprintGoals />} />
                         </Routes>
                     </AnimatePresence>
                 </main>
