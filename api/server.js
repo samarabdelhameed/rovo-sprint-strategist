@@ -227,14 +227,14 @@ app.get('/api/metrics', async (req, res) => {
 app.get('/api/metrics/history', async (req, res) => {
     try {
         if (!supabase) {
-            const data = await sprintAnalyzer.getActiveSprintData();
-            // Generate mock history
-            const history = Array.from({ length: 5 }, (_, i) => ({
-                day: i + 1,
-                healthScore: 65 + i * 3,
-                velocity: 10 + i * 6,
-                completionPercentage: 20 + i * 10
-            }));
+            const sprintData = await sprintAnalyzer.getActiveSprintData();
+            // Get history from local database
+            const history = localDB.db.prepare(`
+                SELECT * FROM sprint_metrics 
+                WHERE sprint_id = ? 
+                ORDER BY recorded_at ASC
+            `).all(sprintData.sprint.id);
+
             return res.json({ success: true, data: history });
         }
 
@@ -276,6 +276,24 @@ app.get('/api/standup', async (req, res) => {
             if (existing) {
                 return res.json({ success: true, data: existing });
             }
+        } else {
+            // Check local SQLite
+            const existing = localDB.db.prepare(`
+                SELECT * FROM standup_notes 
+                WHERE sprint_id = ? AND date = ?
+            `).get(sprintData.sprint.id, today);
+
+            if (existing) {
+                return res.json({
+                    success: true,
+                    data: {
+                        ...existing,
+                        completed_items: JSON.parse(existing.completed_items || '[]'),
+                        in_progress_items: JSON.parse(existing.in_progress_items || '[]'),
+                        blockers: JSON.parse(existing.blockers || '[]')
+                    }
+                });
+            }
         }
 
         // Generate new standup
@@ -304,7 +322,8 @@ app.get('/api/standup', async (req, res) => {
                 reason: i.blocked_reason
             })),
             health_score: sprintData.healthScore,
-            notes: standupContent
+            notes: standupContent,
+            generated_at: new Date().toISOString()
         };
 
         // Save to database
@@ -314,8 +333,8 @@ app.get('/api/standup', async (req, res) => {
             // Save to local SQLite
             const id = 'standup-' + Date.now();
             localDB.db.prepare(`
-                INSERT INTO standup_notes (id, sprint_id, date, day_number, completed_items, in_progress_items, blockers, health_score, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO standup_notes (id, sprint_id, date, day_number, completed_items, in_progress_items, blockers, health_score, notes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 id,
                 standup.sprint_id,
@@ -325,7 +344,8 @@ app.get('/api/standup', async (req, res) => {
                 JSON.stringify(standup.in_progress_items),
                 JSON.stringify(standup.blockers),
                 standup.health_score,
-                standup.notes
+                standup.notes,
+                standup.generated_at
             );
         }
 
@@ -341,7 +361,21 @@ app.get('/api/standup', async (req, res) => {
 app.get('/api/standup/history', async (req, res) => {
     try {
         if (!supabase) {
-            return res.json({ success: true, data: [] });
+            const sprintData = await sprintAnalyzer.getActiveSprintData();
+            const history = localDB.db.prepare(`
+                SELECT * FROM standup_notes 
+                WHERE sprint_id = ? 
+                ORDER BY date DESC
+            `).all(sprintData.sprint.id);
+
+            const formattedHistory = history.map(h => ({
+                ...h,
+                completed_items: JSON.parse(h.completed_items || '[]'),
+                in_progress_items: JSON.parse(h.in_progress_items || '[]'),
+                blockers: JSON.parse(h.blockers || '[]')
+            }));
+
+            return res.json({ success: true, data: formattedHistory });
         }
 
         const sprintData = await sprintAnalyzer.getActiveSprintData();
@@ -561,8 +595,19 @@ async function getAnalyticsData(sprintData) {
 app.get('/api/activities', async (req, res) => {
     try {
         if (!supabase) {
-            const data = await sprintAnalyzer.getActiveSprintData();
-            return res.json({ success: true, data: data.activities });
+            const sprintData = await sprintAnalyzer.getActiveSprintData();
+            const activities = localDB.db.prepare(`
+                SELECT ta.*, tm.name as member_name, tm.avatar_url as member_avatar,
+                       i.key as issue_key, i.title as issue_title
+                FROM team_activities ta
+                LEFT JOIN team_members tm ON ta.member_id = tm.id
+                LEFT JOIN issues i ON ta.issue_id = i.id
+                WHERE ta.sprint_id = ?
+                ORDER BY ta.created_at DESC
+                LIMIT 50
+            `).all(sprintData.sprint.id);
+
+            return res.json({ success: true, data: activities });
         }
 
         const sprintData = await sprintAnalyzer.getActiveSprintData();
