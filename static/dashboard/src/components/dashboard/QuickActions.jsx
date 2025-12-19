@@ -1,42 +1,55 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
     Flag,
     MessageSquare,
     BarChart3,
     RefreshCw,
     Download,
-    Sparkles
+    Sparkles,
+    Loader2
 } from 'lucide-react'
 
-const actions = [
-    {
-        icon: Flag,
-        label: 'Pit-Stop Analysis',
-        description: 'Get AI recommendations',
-        color: 'from-accent to-orange-600'
-    },
-    {
-        icon: MessageSquare,
-        label: 'Generate Standup',
-        description: 'Auto-create standup summary',
-        color: 'from-info to-blue-600'
-    },
-    {
-        icon: BarChart3,
-        label: 'Sprint Report',
-        description: 'Download sprint metrics',
-        color: 'from-success to-green-600'
-    },
-    {
-        icon: RefreshCw,
-        label: 'Sync Data',
-        description: 'Refresh from Jira',
-        color: 'from-purple-500 to-purple-700'
-    },
-]
+export default function QuickActions({ onRefresh = () => { } }) {
+    const navigate = useNavigate();
+    const [isSyncing, setIsSyncing] = useState(false);
 
-export default function QuickActions() {
+    const actions = [
+        {
+            icon: Flag,
+            label: 'Pit-Stop Analysis',
+            description: 'Get AI recommendations',
+            color: 'from-accent to-orange-600',
+            onClick: () => navigate('/pit-stop')
+        },
+        {
+            icon: MessageSquare,
+            label: 'Generate Standup',
+            description: 'Auto-create standup summary',
+            color: 'from-info to-blue-600',
+            onClick: () => navigate('/standup')
+        },
+        {
+            icon: BarChart3,
+            label: 'Sprint Report',
+            description: 'Build custom report',
+            color: 'from-success to-green-600',
+            onClick: () => navigate('/reports')
+        },
+        {
+            icon: RefreshCw,
+            label: 'Sync Data',
+            description: 'Refresh from Jira',
+            color: 'from-purple-500 to-purple-700',
+            onClick: async () => {
+                setIsSyncing(true);
+                await onRefresh();
+                setTimeout(() => setIsSyncing(false), 1000);
+            }
+        },
+    ]
+
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
@@ -55,6 +68,8 @@ export default function QuickActions() {
                         transition={{ delay: index * 0.1 }}
                         whileHover={{ scale: 1.03, y: -2 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={action.onClick}
+                        disabled={action.label === 'Sync Data' && isSyncing}
                         className="relative group p-4 rounded-xl bg-dark-700/50 border border-dark-500 hover:border-accent/50 transition-all overflow-hidden text-left"
                     >
                         {/* Gradient Background on Hover */}
@@ -62,7 +77,11 @@ export default function QuickActions() {
 
                         <div className="relative">
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center mb-3`}>
-                                <action.icon className="w-5 h-5 text-white" />
+                                {action.label === 'Sync Data' && isSyncing ? (
+                                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                ) : (
+                                    <action.icon className="w-5 h-5 text-white" />
+                                )}
                             </div>
                             <p className="font-semibold text-sm">{action.label}</p>
                             <p className="text-xs text-text-muted mt-1">{action.description}</p>
@@ -85,11 +104,11 @@ export default function QuickActions() {
                     <div>
                         <p className="font-semibold text-sm">AI Suggestion</p>
                         <p className="text-xs text-text-muted mt-1">
-                            Consider removing PROJ-106 from sprint. Current velocity suggests 85% completion probability.
+                            Current velocity suggests 92% completion probability. You can take on more tasks.
                         </p>
                         <div className="flex gap-2 mt-3">
-                            <button className="btn-glow text-xs py-1.5 px-3">
-                                Apply
+                            <button className="btn-glow text-xs py-1.5 px-3" onClick={() => navigate('/pit-stop')}>
+                                Analyze
                             </button>
                             <button className="btn-secondary text-xs py-1.5 px-3">
                                 Dismiss

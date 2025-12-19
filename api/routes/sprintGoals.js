@@ -48,12 +48,12 @@ router.get('/', (req, res) => {
 // Create new goal
 router.post('/', (req, res) => {
   try {
-    const { title, description, priority, target_value, unit } = req.body;
+    const { title, description, priority, target_value = 100, unit = 'points' } = req.body;
 
     const result = db.prepare(`
       INSERT INTO sprint_goals (title, description, priority, target_value, unit)
       VALUES (?, ?, ?, ?, ?)
-    `).run(title, description, priority, target_value, unit);
+    `).run(title, description, priority || 'medium', target_value, unit);
 
     const newGoal = db.prepare(`
       SELECT * FROM sprint_goals WHERE id = ?

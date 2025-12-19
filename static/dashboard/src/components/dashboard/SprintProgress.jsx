@@ -13,10 +13,14 @@ const issues = [
 ]
 
 const getStatusConfig = (status) => {
-    switch (status) {
+    const s = status?.toLowerCase() || 'todo';
+    switch (s) {
         case 'done':
+        case 'completed':
             return { icon: CheckCircle2, color: 'text-success', bg: 'bg-success/20', label: 'Done' }
         case 'progress':
+        case 'in_progress':
+        case 'review':
             return { icon: Clock, color: 'text-accent', bg: 'bg-accent/20', label: 'In Progress' }
         case 'blocked':
             return { icon: AlertCircle, color: 'text-danger', bg: 'bg-danger/20', label: 'Blocked' }
@@ -25,10 +29,23 @@ const getStatusConfig = (status) => {
     }
 }
 
-export default function SprintProgress() {
-    const completed = issues.filter(i => i.status === 'done').length
-    const total = issues.length
-    const progress = Math.round((completed / total) * 100)
+export default function SprintProgress({ issues = [], loading = false }) {
+    const completed = issues.filter(i => {
+        const s = i.status?.toLowerCase();
+        return s === 'done' || s === 'completed';
+    }).length;
+    const total = issues.length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    if (loading) {
+        return (
+            <div className="animate-pulse space-y-6">
+                <div className="h-6 bg-dark-700 rounded w-1/3" />
+                <div className="h-20 bg-dark-700 rounded" />
+                <div className="h-64 bg-dark-700 rounded" />
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -59,12 +76,25 @@ export default function SprintProgress() {
 
             {/* Status Summary */}
             <div className="grid grid-cols-4 gap-3 mb-6">
-                {['done', 'progress', 'blocked', 'todo'].map((status) => {
-                    const config = getStatusConfig(status)
-                    const count = issues.filter(i => i.status === status).length
+                {[
+                    { key: 'done', label: 'Done' },
+                    { key: 'progress', label: 'In Progress' },
+                    { key: 'blocked', label: 'Blocked' },
+                    { key: 'todo', label: 'To Do' }
+                ].map((status) => {
+                    const config = getStatusConfig(status.key)
+                    const count = issues.filter(i => {
+                        const s = i.status?.toLowerCase();
+                        if (status.key === 'done') return s === 'done' || s === 'completed';
+                        if (status.key === 'progress') return s === 'progress' || s === 'in_progress' || s === 'review';
+                        if (status.key === 'blocked') return s === 'blocked';
+                        if (status.key === 'todo') return s === 'todo' || !s;
+                        return false;
+                    }).length;
+
                     return (
                         <motion.div
-                            key={status}
+                            key={status.key}
                             className={`p-3 rounded-xl text-center ${config.bg}`}
                             whileHover={{ scale: 1.05 }}
                         >
@@ -76,33 +106,45 @@ export default function SprintProgress() {
             </div>
 
             {/* Issues List */}
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-                {issues.map((issue, index) => {
-                    const config = getStatusConfig(issue.status)
-                    const Icon = config.icon
+            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                {issues.length > 0 ? (
+                    issues.map((issue, index) => {
+                        const config = getStatusConfig(issue.status)
+                        const Icon = config.icon
 
-                    return (
-                        <motion.div
-                            key={issue.key}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="flex items-center gap-3 p-3 rounded-xl bg-dark-700/50 hover:bg-dark-700 transition-colors cursor-pointer group"
-                        >
-                            <Icon className={`w-5 h-5 ${config.color}`} />
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-accent font-mono">{issue.key}</span>
-                                    <span className="text-sm truncate">{issue.title}</span>
+                        return (
+                            <motion.div
+                                key={issue.key || issue.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="flex items-center gap-3 p-3 rounded-xl bg-dark-700/50 hover:bg-dark-700 transition-colors cursor-pointer group"
+                            >
+                                <Icon className={`w-5 h-5 ${config.color}`} />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-accent font-mono">{issue.key}</span>
+                                        <span className="text-sm truncate">{issue.title}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <span className="text-xs text-text-muted">{issue.points} pts</span>
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center text-xs font-bold">
-                                {issue.assignee}
-                            </div>
-                        </motion.div>
-                    )
-                })}
+                                <span className="text-xs text-text-muted whitespace-nowrap">{issue.story_points || 0} pts</span>
+                                {issue.assignee && (
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center text-[10px] font-bold overflow-hidden" title={issue.assignee.name}>
+                                        {issue.assignee.avatar ? (
+                                            <img src={issue.assignee.avatar} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            issue.assignee.name?.charAt(0) || '?'
+                                        )}
+                                    </div>
+                                )}
+                            </motion.div>
+                        )
+                    })
+                ) : (
+                    <div className="text-center py-8 text-text-muted text-sm bg-dark-700/30 rounded-xl border border-dashed border-dark-600">
+                        No issues found in this sprint.
+                    </div>
+                )}
             </div>
         </div>
     )

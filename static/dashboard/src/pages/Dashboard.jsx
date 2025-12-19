@@ -282,12 +282,11 @@ export default function Dashboard() {
                     <VelocityChart loading={loading} />
                 </motion.div>
 
-                {/* Sprint Progress */}
                 <motion.div
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-8 glass-card p-6"
                 >
-                    <SprintProgress loading={loading} />
+                    <SprintProgress issues={sprintData?.issues} loading={loading} />
                 </motion.div>
 
                 {/* Risk Radar */}
@@ -298,12 +297,11 @@ export default function Dashboard() {
                     <RiskRadar loading={loading} />
                 </motion.div>
 
-                {/* Team Activity */}
                 <motion.div
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-6 glass-card p-6"
                 >
-                    <TeamActivity loading={loading} />
+                    <TeamActivity teamMetrics={sprintData?.teamMetrics} loading={loading} />
                 </motion.div>
 
                 {/* Quick Actions */}
@@ -311,7 +309,38 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-6 glass-card p-6"
                 >
-                    <QuickActions loading={loading} />
+                    <QuickActions onRefresh={handleRefresh} loading={loading} />
+                </motion.div>
+
+                {/* Sprint Goals (New Section for Interconnection) */}
+                <motion.div
+                    variants={itemVariants}
+                    className="col-span-12 glass-card p-6"
+                >
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <span className="text-2xl">🎯</span>
+                            Sprint Goals
+                        </h3>
+                        <motion.button
+                            className="text-accent text-sm font-medium hover:underline"
+                            onClick={() => navigate('/sprint-goals')}
+                        >
+                            Manage Goals
+                        </motion.button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {sprint?.goal ? (
+                            <div className="col-span-full p-4 rounded-xl bg-accent/5 border border-accent/20">
+                                <p className="text-sm font-semibold text-accent mb-1">Main Sprint Goal</p>
+                                <p className="text-lg">{sprint.goal}</p>
+                            </div>
+                        ) : (
+                            <div className="col-span-full py-8 text-center text-text-muted text-sm bg-dark-700/30 rounded-xl border border-dashed border-dark-600">
+                                No main sprint goal set.
+                            </div>
+                        )}
+                    </div>
                 </motion.div>
             </div>
         </motion.div>

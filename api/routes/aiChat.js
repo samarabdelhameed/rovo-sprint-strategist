@@ -30,40 +30,20 @@ router.post('/', async (req, res) => {
     // Get current sprint data for context
     const sprintData = getSprintContext();
     
-    // Use the new AI service
-    const aiResponse = await aiService.processAIChat(message, { 
-      sprintData, 
-      context 
-    });
+    // Generate AI response based on message and context
+    const response = await generateAIResponse(message, sprintData, context);
     
-    if (aiResponse.success) {
-      // Save to chat history
-      db.prepare(`
-        INSERT INTO chat_history (message, response, context)
-        VALUES (?, ?, ?)
-      `).run(message, aiResponse.response, context || 'general');
+    // Save to chat history
+    db.prepare(`
+      INSERT INTO chat_history (message, response, context)
+      VALUES (?, ?, ?)
+    `).run(message, response.content, context || 'general');
 
-      res.json({
-        success: true,
-        response: aiResponse.response,
-        intent: aiResponse.intent,
-        suggestions: getSuggestions(aiResponse.intent)
-      });
-    } else {
-      // Fallback to old system
-      const response = await generateAIResponse(message, sprintData, context);
-      
-      db.prepare(`
-        INSERT INTO chat_history (message, response, context)
-        VALUES (?, ?, ?)
-      `).run(message, response.content, context || 'general');
-
-      res.json({
-        success: true,
-        response: response.content,
-        suggestions: response.suggestions || []
-      });
-    }
+    res.json({
+      success: true,
+      response: response.content,
+      suggestions: response.suggestions || []
+    });
   } catch (error) {
     console.error('Error in AI chat:', error);
     res.status(500).json({ 
@@ -159,6 +139,13 @@ function getSprintContext() {
       LIMIT 7
     `).all();
 
+    // Get sprint goals
+    const sprintGoals = db.prepare(`
+      SELECT * FROM sprint_goals 
+      WHERE sprint_id = 'SPRINT-2024-01'
+      ORDER BY created_at DESC
+    `).all();
+
     // Calculate current metrics
     const totalTasks = issues.length;
     const completedTasks = issues.filter(t => t.status === 'Done').length;
@@ -198,6 +185,7 @@ function getSprintContext() {
         burndownTrend: sprintMetrics.length > 1 ? 
           calculateTrend(sprintMetrics) : 'stable'
       },
+      goals: sprintGoals,
       team: teamMembers,
       risks: identifyRisks(issues, completionRate)
     };
@@ -244,6 +232,11 @@ async function generateAIResponse(message, sprintData, context) {
   // Simulate AI processing - in real implementation, this would call OpenAI/Rovo API
   const lowerMessage = message.toLowerCase();
   
+  // Sprint goals queries
+  if (lowerMessage.includes('أهداف') || lowerMessage.includes('هدف') || lowerMessage.includes('goals')) {
+    return generateGoalsResponse(sprintData);
+  }
+  
   // Sprint status queries
   if (lowerMessage.includes('وضع السبرينت') || lowerMessage.includes('حالة السبرينت') || lowerMessage.includes('كيف يبدو')) {
     return generateSprintStatusResponse(sprintData);
@@ -276,6 +269,68 @@ async function generateAIResponse(message, sprintData, context) {
   
   // Default response
   return generateDefaultResponse(sprintData);
+}
+
+function generateGoalsResponse(data) {
+  if (!data || !data.goals) {
+    return {
+      content: 'لا يمكنني الوصول لبيانات أهداف السبرينت حالياً.',
+      suggestions: []
+    };
+  }
+
+  if (data.goals.length === 0) {
+    return {
+      content: '📋 **لا توجد أهداف محددة للسبرينت الحالي**\n\nيُنصح بإضافة أهداف واضحة لتحسين التركيز والإنتاجية.',
+      suggestions: [
+        'كيف أضيف أهداف للسبرينت؟',
+        'ما هي أفضل الممارسات للأهداف؟',
+        'تحليل أداء السبرينت',
+        'اقتراحات لتحسين التخطيط'
+      ]
+    };
+  }
+
+  const goalsText = data.goals.map((goal, index) => {
+    const progress = goal.current_value && goal.target_value 
+      ? Math.round((goal.current_value / goal.target_value) * 100) 
+      : 0;
+    
+    const statusEmoji = goal.status === 'completed' ? '✅' : 
+                       goal.status === 'in_progress' ? '🔄' : '⏳';
+    
+    const priorityEmoji = goal.priority === 'high' ? '🔴' : 
+                         goal.priority === 'medium' ? '🟡' : '🟢';
+    
+    return `${index + 1}. ${statusEmoji} **${goal.title}** ${priorityEmoji}\n   📝 ${goal.description || 'لا يوجد وصف'}\n   📊 التقدم: ${progress}% (${goal.current_value || 0}/${goal.target_value} ${goal.unit})`;
+  }).join('\n\n');
+
+  const completedGoals = data.goals.filter(g => g.status === 'completed').length;
+  const totalGoals = data.goals.length;
+  const overallProgress = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+
+  const content = `🎯 **أهداف السبرينت الحالية:**
+
+${goalsText}
+
+📈 **الملخص العام:**
+• إجمالي الأهداف: ${totalGoals}
+• المكتملة: ${completedGoals}
+• التقدم الإجمالي: ${overallProgress}%
+
+💡 **التوصية:** ${overallProgress >= 70 ? 'أداء ممتاز! استمر على نفس الوتيرة' : 
+  overallProgress >= 40 ? 'تقدم جيد، ركز على الأهداف عالية الأولوية' : 
+  'يحتاج تركيز أكبر على تحقيق الأهداف'}`;
+
+  return {
+    content,
+    suggestions: [
+      'كيف أحسن تحقيق الأهداف؟',
+      'ما هي الأهداف المتأخرة؟',
+      'اقترح خطة لتسريع التقدم',
+      'تحليل أداء السبرينت العام'
+    ]
+  };
 }
 
 function generateSprintStatusResponse(data) {
@@ -539,6 +594,10 @@ ${successProbability < 70 ? `
 }
 
 function generateDefaultResponse(data) {
+  const goalsInfo = data.goals && data.goals.length > 0 
+    ? `\n\n🎯 **أهداف السبرينت الحالية:**\n${data.goals.map(g => `• ${g.title} (${g.priority})`).join('\n')}`
+    : '';
+
   return {
     content: `مرحباً! أنا Rovo، مساعدك الذكي في إدارة السبرينت. 
 
@@ -548,7 +607,7 @@ function generateDefaultResponse(data) {
 ⚠️ **تحديد المخاطر والمشاكل**
 💡 **اقتراح حلول وتوصيات**
 🎯 **توقع نتائج السبرينت**
-👥 **تحليل أداء الفريق**
+👥 **تحليل أداء الفريق**${goalsInfo}
 
 ما الذي تريد معرفته عن سبرينتك؟`,
     suggestions: [
