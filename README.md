@@ -9,6 +9,8 @@
 [![Jira Integration](https://img.shields.io/badge/Integrates%20with-Jira-0052CC?style=for-the-badge&logo=jira&logoColor=white)](https://www.atlassian.com/software/jira)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
+### 🌐 [Live Demo](https://build-9aufuthni-samarabdelhameeds-projects-df99c328.vercel.app) | 📦 [GitHub Repository](https://github.com/samarabdelhameed/rovo-sprint-strategist)
+
 <img src="assets/banner.png" alt="Rovo Sprint Strategist Banner" width="800"/>
 
 **🏆 Codegeist 2025 Hackathon Submission**
