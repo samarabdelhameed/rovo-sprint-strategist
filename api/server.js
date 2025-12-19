@@ -1,0 +1,735 @@
+/**
+ * 🚀 Rovo Sprint Strategist - API Server
+ * 
+ * Express.js backend with Supabase integration
+ */
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient.js';
+import sprintAnalyzer from './services/sprintAnalyzer.js';
+import aiService from './services/aiService.js';
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Request logging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} | ${req.method} ${req.path}`);
+    next();
+});
+
+// =====================================================
+// HEALTH CHECK
+// =====================================================
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        supabase: isSupabaseConfigured() ? 'connected' : 'mock-mode',
+        version: '1.0.0'
+    });
+});
+
+// =====================================================
+// SPRINT ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/sprint - Get active sprint with all data
+ */
+app.get('/api/sprint', async (req, res) => {
+    try {
+        const data = await sprintAnalyzer.getActiveSprintData();
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Error fetching sprint:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/sprint/:id - Get specific sprint
+ */
+app.get('/api/sprint/:id', async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.json({ success: true, data: await sprintAnalyzer.getActiveSprintData() });
+        }
+
+        const { data, error } = await supabase
+            .from('sprints')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/sprint/:id/burndown - Get burndown chart data
+ */
+app.get('/api/sprint/:id/burndown', async (req, res) => {
+    try {
+        const data = await sprintAnalyzer.getBurndownData(req.params.id);
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// ISSUES ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/issues - Get all issues for active sprint
+ */
+app.get('/api/issues', async (req, res) => {
+    try {
+        if (!supabase) {
+            const data = await sprintAnalyzer.getActiveSprintData();
+            return res.json({ success: true, data: data.issues });
+        }
+
+        const { status, assignee } = req.query;
+        let query = supabase.from('issues').select('*, assignee:team_members(*)');
+
+        if (status) query = query.eq('status', status);
+        if (assignee) query = query.eq('assignee_id', assignee);
+
+        const { data, error } = await query.order('priority', { ascending: true });
+        if (error) throw error;
+
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * PATCH /api/issues/:id - Update issue
+ */
+app.patch('/api/issues/:id', async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.json({ success: true, message: 'Mock mode - update simulated' });
+        }
+
+        const { status, assignee_id, story_points, priority } = req.body;
+        const updates = { updated_at: new Date().toISOString() };
+
+        if (status) {
+            updates.status = status;
+            if (status === 'done') updates.completed_at = new Date().toISOString();
+            if (status === 'blocked') updates.blocked_since = new Date().toISOString();
+        }
+        if (assignee_id) updates.assignee_id = assignee_id;
+        if (story_points !== undefined) updates.story_points = story_points;
+        if (priority) updates.priority = priority;
+
+        const { data, error } = await supabase
+            .from('issues')
+            .update(updates)
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Log activity
+        await logActivity(data.sprint_id, null, data.id, 'updated', `Updated ${data.key}`);
+
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// TEAM ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/team - Get all team members
+ */
+app.get('/api/team', async (req, res) => {
+    try {
+        if (!supabase) {
+            const data = await sprintAnalyzer.getActiveSprintData();
+            return res.json({ success: true, data: data.team });
+        }
+
+        const { data, error } = await supabase
+            .from('team_members')
+            .select('*')
+            .eq('is_active', true)
+            .order('name');
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/team/workload - Get team workload distribution
+ */
+app.get('/api/team/workload', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        res.json({ success: true, data: sprintData.teamMetrics });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// METRICS ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/metrics - Get current sprint metrics
+ */
+app.get('/api/metrics', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        res.json({
+            success: true,
+            data: {
+                healthScore: sprintData.healthScore,
+                velocity: sprintData.velocity,
+                completionPercentage: sprintData.completionPercentage,
+                totalPoints: sprintData.totalPoints,
+                completedPoints: sprintData.completedPoints,
+                issuesTotal: sprintData.issuesTotal,
+                issuesCompleted: sprintData.issuesCompleted,
+                issuesInProgress: sprintData.issuesInProgress,
+                blockersCount: sprintData.blockersCount,
+                daysRemaining: sprintData.daysRemaining,
+                dayNumber: sprintData.dayNumber,
+                totalDays: sprintData.totalDays
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/metrics/history - Get historical metrics
+ */
+app.get('/api/metrics/history', async (req, res) => {
+    try {
+        if (!supabase) {
+            const data = await sprintAnalyzer.getActiveSprintData();
+            // Generate mock history
+            const history = Array.from({ length: 5 }, (_, i) => ({
+                day: i + 1,
+                healthScore: 65 + i * 3,
+                velocity: 10 + i * 6,
+                completionPercentage: 20 + i * 10
+            }));
+            return res.json({ success: true, data: history });
+        }
+
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        const { data, error } = await supabase
+            .from('sprint_metrics')
+            .select('*')
+            .eq('sprint_id', sprintData.sprint.id)
+            .order('recorded_at', { ascending: true });
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// STANDUP ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/standup - Get today's standup or generate new one
+ */
+app.get('/api/standup', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        const today = new Date().toISOString().split('T')[0];
+
+        // Check if standup exists for today
+        if (supabase) {
+            const { data: existing } = await supabase
+                .from('standup_notes')
+                .select('*')
+                .eq('sprint_id', sprintData.sprint.id)
+                .eq('date', today)
+                .single();
+
+            if (existing) {
+                return res.json({ success: true, data: existing });
+            }
+        }
+
+        // Generate new standup
+        const standupContent = await aiService.generateStandupSummary(
+            sprintData,
+            sprintData.activities
+        );
+
+        const standup = {
+            sprint_id: sprintData.sprint.id,
+            date: today,
+            day_number: sprintData.dayNumber,
+            completed_items: sprintData.issues.filter(i => i.status === 'done').map(i => ({
+                key: i.key,
+                title: i.title,
+                assignee: i.assignee?.name
+            })),
+            in_progress_items: sprintData.issues.filter(i => ['in_progress', 'review'].includes(i.status)).map(i => ({
+                key: i.key,
+                title: i.title,
+                assignee: i.assignee?.name
+            })),
+            blockers: sprintData.issues.filter(i => i.status === 'blocked').map(i => ({
+                key: i.key,
+                title: i.title,
+                reason: i.blocked_reason
+            })),
+            health_score: sprintData.healthScore,
+            notes: standupContent
+        };
+
+        // Save to database
+        if (supabase) {
+            await supabase.from('standup_notes').insert(standup);
+        }
+
+        res.json({ success: true, data: standup });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/standup/history - Get standup history
+ */
+app.get('/api/standup/history', async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        const { data, error } = await supabase
+            .from('standup_notes')
+            .select('*')
+            .eq('sprint_id', sprintData.sprint.id)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// PIT-STOP ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/pitstop - Get pit-stop recommendations
+ */
+app.get('/api/pitstop', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+
+        // Get existing recommendations from DB
+        let existingRecs = [];
+        if (supabase) {
+            const { data } = await supabase
+                .from('pit_stop_recommendations')
+                .select('*')
+                .eq('sprint_id', sprintData.sprint.id)
+                .eq('status', 'pending')
+                .order('priority');
+            existingRecs = data || [];
+        }
+
+        // If no recent recommendations, generate new ones
+        if (existingRecs.length === 0) {
+            const aiRecs = await aiService.generatePitStopRecommendations(sprintData);
+
+            // Save to database
+            if (supabase && aiRecs.length > 0) {
+                const toInsert = aiRecs.map((rec, idx) => ({
+                    sprint_id: sprintData.sprint.id,
+                    recommendation_type: rec.type || 'other',
+                    title: rec.title,
+                    description: rec.description,
+                    priority: idx + 1,
+                    impact_score: parseInt(rec.impact) || 10,
+                    affected_issues: rec.affectedIssues || [],
+                    ai_generated: true
+                }));
+
+                await supabase.from('pit_stop_recommendations').insert(toInsert);
+                existingRecs = toInsert;
+            } else {
+                existingRecs = aiRecs;
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                recommendations: existingRecs,
+                sprintHealth: sprintData.healthScore,
+                urgencyLevel: sprintData.healthScore < 50 ? 'critical'
+                    : sprintData.healthScore < 70 ? 'high'
+                        : 'normal'
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/pitstop/:id/apply - Apply a recommendation
+ */
+app.post('/api/pitstop/:id/apply', async (req, res) => {
+    try {
+        if (!supabase) {
+            return res.json({ success: true, message: 'Mock mode - recommendation applied' });
+        }
+
+        const { data, error } = await supabase
+            .from('pit_stop_recommendations')
+            .update({ status: 'applied', applied_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// LEADERBOARD ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/leaderboard - Get team leaderboard
+ */
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+
+        // Calculate scores for each team member
+        const leaderboard = sprintData.teamMetrics.map(member => {
+            let score = 0;
+
+            // Points for completed story points
+            score += member.completedPoints * 10;
+
+            // Bonus for high completion rate
+            if (member.completionRate >= 80) score += 50;
+            else if (member.completionRate >= 60) score += 30;
+
+            // Penalty for overload
+            if (member.load > 100) score -= 20;
+
+            return {
+                ...member,
+                score,
+                rank: 0
+            };
+        }).sort((a, b) => b.score - a.score);
+
+        // Assign ranks
+        leaderboard.forEach((member, idx) => {
+            member.rank = idx + 1;
+        });
+
+        // Get achievements
+        let achievements = [];
+        if (supabase) {
+            const { data } = await supabase
+                .from('achievements')
+                .select('*, member:team_members(*)')
+                .eq('sprint_id', sprintData.sprint.id)
+                .order('earned_at', { ascending: false });
+            achievements = data || [];
+        } else {
+            // Mock achievements
+            achievements = [
+                { badge_name: 'Pole Position', badge_icon: '🏎️', member: { name: 'Sarah Johnson' } },
+                { badge_name: 'Fast Finisher', badge_icon: '⚡', member: { name: 'Lisa Anderson' } },
+                { badge_name: 'Clean Code', badge_icon: '🧹', member: { name: 'Mike Chen' } },
+            ];
+        }
+
+        res.json({
+            success: true,
+            data: {
+                leaderboard,
+                achievements,
+                sprintName: sprintData.sprint.name
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// ANALYTICS ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/analytics - Get analytics data
+ */
+app.get('/api/analytics', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+
+        // Velocity trend (last 5 sprints)
+        const velocityTrend = [
+            { sprint: 'Sprint 38', velocity: 42, committed: 45 },
+            { sprint: 'Sprint 39', velocity: 38, committed: 40 },
+            { sprint: 'Sprint 40', velocity: 45, committed: 48 },
+            { sprint: 'Sprint 41', velocity: 41, committed: 44 },
+            { sprint: 'Sprint 42', velocity: sprintData.velocity, committed: sprintData.totalPoints }
+        ];
+
+        // Issue distribution
+        const issueDistribution = [
+            { status: 'Done', count: sprintData.issuesCompleted, color: '#00D26A' },
+            { status: 'In Progress', count: sprintData.issuesInProgress, color: '#F97316' },
+            { status: 'To Do', count: sprintData.issuesTodo, color: '#6B7280' },
+            { status: 'Blocked', count: sprintData.blockersCount, color: '#EF4444' }
+        ];
+
+        // Team performance
+        const teamPerformance = sprintData.teamMetrics.map(m => ({
+            name: m.name,
+            completedPoints: m.completedPoints,
+            totalPoints: m.points,
+            efficiency: m.completionRate
+        }));
+
+        // Health trend
+        const healthTrend = sprintData.metrics?.length > 0
+            ? sprintData.metrics.map((m, i) => ({
+                day: i + 1,
+                score: m.health_score
+            }))
+            : Array.from({ length: 5 }, (_, i) => ({
+                day: i + 1,
+                score: 65 + i * 3
+            }));
+
+        res.json({
+            success: true,
+            data: {
+                velocityTrend,
+                issueDistribution,
+                teamPerformance,
+                healthTrend,
+                summary: {
+                    averageVelocity: Math.round(velocityTrend.reduce((s, v) => s + v.velocity, 0) / velocityTrend.length),
+                    velocityChange: '+12%',
+                    estimationAccuracy: '85%',
+                    sprintSuccessRate: '78%'
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// ACTIVITIES ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/activities - Get recent team activities
+ */
+app.get('/api/activities', async (req, res) => {
+    try {
+        if (!supabase) {
+            const data = await sprintAnalyzer.getActiveSprintData();
+            return res.json({ success: true, data: data.activities });
+        }
+
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        const { data, error } = await supabase
+            .from('team_activities')
+            .select('*, member:team_members(*), issue:issues(*)')
+            .eq('sprint_id', sprintData.sprint.id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// AI ENDPOINTS
+// =====================================================
+
+/**
+ * POST /api/ai/analyze - Get AI analysis of sprint
+ */
+app.post('/api/ai/analyze', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        const analysis = await aiService.analyzeSprintWithAI(sprintData);
+        res.json({ success: true, data: analysis });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ai/ask - Ask Rovo AI a question
+ */
+app.post('/api/ai/ask', async (req, res) => {
+    try {
+        const { question } = req.body;
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+
+        // For now, use the analysis endpoint
+        // In production, this would use a conversational AI model
+        const response = await aiService.analyzeSprintWithAI({
+            ...sprintData,
+            userQuestion: question
+        });
+
+        res.json({ success: true, data: response });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// SETTINGS ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/settings - Get user settings
+ */
+app.get('/api/settings', async (req, res) => {
+    try {
+        // Default settings
+        const defaultSettings = {
+            notifications_enabled: true,
+            email_alerts: true,
+            slack_alerts: false,
+            alert_threshold: 60,
+            theme: 'dark',
+            language: 'en'
+        };
+
+        if (!supabase) {
+            return res.json({ success: true, data: defaultSettings });
+        }
+
+        // In production, get user-specific settings
+        res.json({ success: true, data: defaultSettings });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * PUT /api/settings - Update settings
+ */
+app.put('/api/settings', async (req, res) => {
+    try {
+        const settings = req.body;
+        // In production, save to database
+        res.json({ success: true, data: settings, message: 'Settings updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
+async function logActivity(sprintId, memberId, issueId, action, description) {
+    if (!supabase) return;
+
+    try {
+        await supabase.from('team_activities').insert({
+            sprint_id: sprintId,
+            member_id: memberId,
+            issue_id: issueId,
+            action,
+            description
+        });
+    } catch (error) {
+        console.error('Failed to log activity:', error);
+    }
+}
+
+// =====================================================
+// ERROR HANDLING
+// =====================================================
+
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ success: false, error: 'Endpoint not found' });
+});
+
+// =====================================================
+// START SERVER
+// =====================================================
+
+app.listen(PORT, () => {
+    console.log(`
+🏎️  ═══════════════════════════════════════════════════
+   ROVO SPRINT STRATEGIST API
+   ═══════════════════════════════════════════════════
+   
+   🚀 Server running on: http://localhost:${PORT}
+   📊 Health check:      http://localhost:${PORT}/api/health
+   🗄️  Supabase:          ${isSupabaseConfigured() ? '✅ Connected' : '⚠️  Mock Mode'}
+   🤖 AI Service:        ${process.env.ANTHROPIC_API_KEY ? '✅ Ready' : '⚠️  Fallback Mode'}
+   
+   ═══════════════════════════════════════════════════
+`);
+});
+
+export default app;

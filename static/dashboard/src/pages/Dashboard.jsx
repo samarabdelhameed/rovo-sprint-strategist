@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Sphere, MeshDistortMaterial } from '@react-three/drei'
@@ -11,8 +11,11 @@ import {
     Users,
     Zap,
     Target,
-    Activity
+    Activity,
+    RefreshCw,
+    Loader2
 } from 'lucide-react'
+import { useSprint } from '../context/SprintContext'
 import HealthGauge from '../components/dashboard/HealthGauge'
 import VelocityChart from '../components/dashboard/VelocityChart'
 import RiskRadar from '../components/dashboard/RiskRadar'
@@ -51,45 +54,104 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 }
 }
 
+// Loading Skeleton Component
+function StatSkeleton() {
+    return (
+        <div className="stat-card animate-pulse">
+            <div className="flex items-start justify-between">
+                <div className="flex-1">
+                    <div className="h-4 bg-dark-700 rounded w-24 mb-3"></div>
+                    <div className="h-10 bg-dark-700 rounded w-20 mb-2"></div>
+                    <div className="h-4 bg-dark-700 rounded w-32"></div>
+                </div>
+                <div className="w-12 h-12 bg-dark-700 rounded-xl"></div>
+            </div>
+        </div>
+    )
+}
+
 export default function Dashboard() {
-    const stats = [
+    const { sprint, metrics, loading, error, lastUpdated, refresh } = useSprint()
+    const [isRefreshing, setIsRefreshing] = useState(false)
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true)
+        await refresh()
+        setTimeout(() => setIsRefreshing(false), 500)
+    }
+
+    // Format last updated time
+    const formatLastUpdated = () => {
+        if (!lastUpdated) return 'Never'
+        const diff = Math.floor((new Date() - lastUpdated) / 1000)
+        if (diff < 60) return `${diff}s ago`
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+        return `${Math.floor(diff / 3600)}h ago`
+    }
+
+    // Generate stats from real metrics
+    const stats = metrics ? [
         {
             label: 'Health Score',
-            value: '78',
+            value: metrics.healthScore?.toString() || '0',
             unit: '/100',
-            change: '+5%',
-            trend: 'up',
+            change: metrics.healthScore >= 70 ? '+' + (metrics.healthScore - 70) + '%' : (metrics.healthScore - 70) + '%',
+            trend: metrics.healthScore >= 70 ? 'up' : metrics.healthScore >= 50 ? 'neutral' : 'down',
             icon: Activity,
-            color: 'text-success'
+            color: metrics.healthScore >= 70 ? 'text-success' : metrics.healthScore >= 50 ? 'text-warning' : 'text-danger'
         },
         {
             label: 'Velocity',
-            value: '34',
+            value: metrics.velocity?.toString() || '0',
             unit: 'pts',
-            change: '+12%',
+            change: `${metrics.completedPoints || 0}/${metrics.totalPoints || 0}`,
             trend: 'up',
             icon: Zap,
             color: 'text-accent'
         },
         {
             label: 'Completion',
-            value: '65',
+            value: metrics.completionPercentage?.toString() || '0',
             unit: '%',
-            change: '-3%',
-            trend: 'down',
+            change: `Day ${metrics.dayNumber}/${metrics.totalDays}`,
+            trend: metrics.completionPercentage >= metrics.idealProgress ? 'up' : 'down',
             icon: Target,
-            color: 'text-warning'
+            color: metrics.completionPercentage >= metrics.idealProgress ? 'text-success' : 'text-warning'
         },
         {
-            label: 'Team Load',
-            value: '82',
-            unit: '%',
-            change: '0%',
-            trend: 'neutral',
-            icon: Users,
-            color: 'text-info'
+            label: 'Blockers',
+            value: metrics.blockersCount?.toString() || '0',
+            unit: '',
+            change: metrics.blockersCount === 0 ? 'All clear!' : 'Needs attention',
+            trend: metrics.blockersCount === 0 ? 'up' : 'down',
+            icon: AlertTriangle,
+            color: metrics.blockersCount === 0 ? 'text-success' : 'text-danger'
         },
-    ]
+    ] : []
+
+    // Error state
+    if (error) {
+        return (
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center h-full"
+            >
+                <AlertTriangle className="w-16 h-16 text-warning mb-4" />
+                <h2 className="text-xl font-bold mb-2">Failed to Load Sprint Data</h2>
+                <p className="text-text-muted mb-4">{error}</p>
+                <motion.button
+                    className="btn-glow"
+                    onClick={handleRefresh}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry
+                </motion.button>
+            </motion.div>
+        )
+    }
 
     return (
         <motion.div
@@ -102,16 +164,30 @@ export default function Dashboard() {
             <motion.div variants={itemVariants} className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-display font-bold gradient-text">Dashboard</h1>
-                    <p className="text-text-muted mt-1">Sprint 42 • Day 5 of 10</p>
+                    <p className="text-text-muted mt-1">
+                        {loading ? (
+                            <span className="animate-pulse">Loading...</span>
+                        ) : (
+                            <>
+                                {sprint?.name || 'Sprint'} • Day {metrics?.dayNumber || 0} of {metrics?.totalDays || 10}
+                            </>
+                        )}
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <motion.button
-                        className="btn-secondary"
+                        className="btn-secondary flex items-center"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
                     >
-                        <Clock className="w-4 h-4 mr-2" />
-                        Last updated: 2 min ago
+                        {isRefreshing ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <Clock className="w-4 h-4 mr-2" />
+                        )}
+                        Updated: {formatLastUpdated()}
                     </motion.button>
                     <motion.button
                         className="btn-glow"
@@ -126,37 +202,46 @@ export default function Dashboard() {
 
             {/* Stats Grid */}
             <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, index) => (
-                    <motion.div
-                        key={stat.label}
-                        className="stat-card relative overflow-hidden group"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        whileHover={{ y: -5 }}
-                    >
-                        {/* Background Glow */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {loading ? (
+                    <>
+                        <StatSkeleton />
+                        <StatSkeleton />
+                        <StatSkeleton />
+                        <StatSkeleton />
+                    </>
+                ) : (
+                    stats.map((stat, index) => (
+                        <motion.div
+                            key={stat.label}
+                            className="stat-card relative overflow-hidden group"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            whileHover={{ y: -5 }}
+                        >
+                            {/* Background Glow */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                        <div className="relative flex items-start justify-between">
-                            <div>
-                                <p className="text-text-muted text-sm">{stat.label}</p>
-                                <div className="flex items-baseline gap-1 mt-2">
-                                    <span className="text-4xl font-display font-bold">{stat.value}</span>
-                                    <span className="text-text-muted text-lg">{stat.unit}</span>
+                            <div className="relative flex items-start justify-between">
+                                <div>
+                                    <p className="text-text-muted text-sm">{stat.label}</p>
+                                    <div className="flex items-baseline gap-1 mt-2">
+                                        <span className="text-4xl font-display font-bold">{stat.value}</span>
+                                        <span className="text-text-muted text-lg">{stat.unit}</span>
+                                    </div>
+                                    <div className={`flex items-center gap-1 mt-2 text-sm ${stat.trend === 'up' ? 'text-success' : stat.trend === 'down' ? 'text-danger' : 'text-text-muted'
+                                        }`}>
+                                        {stat.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : stat.trend === 'down' ? <TrendingDown className="w-4 h-4" /> : null}
+                                        <span>{stat.change}</span>
+                                    </div>
                                 </div>
-                                <div className={`flex items-center gap-1 mt-2 text-sm ${stat.trend === 'up' ? 'text-success' : stat.trend === 'down' ? 'text-danger' : 'text-text-muted'
-                                    }`}>
-                                    {stat.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : stat.trend === 'down' ? <TrendingDown className="w-4 h-4" /> : null}
-                                    <span>{stat.change} from last sprint</span>
+                                <div className={`p-3 rounded-xl bg-dark-700 ${stat.color}`}>
+                                    <stat.icon className="w-6 h-6" />
                                 </div>
                             </div>
-                            <div className={`p-3 rounded-xl bg-dark-700 ${stat.color}`}>
-                                <stat.icon className="w-6 h-6" />
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
+                        </motion.div>
+                    ))
+                )}
             </motion.div>
 
             {/* Main Grid */}
@@ -176,7 +261,11 @@ export default function Dashboard() {
                             <OrbitControls enableZoom={false} autoRotate />
                         </Canvas>
                     </div>
-                    <HealthGauge score={78} trend="improving" />
+                    <HealthGauge
+                        score={metrics?.healthScore || 0}
+                        trend={metrics?.healthScore >= 70 ? 'improving' : 'declining'}
+                        loading={loading}
+                    />
                 </motion.div>
 
                 {/* Velocity Chart */}
@@ -184,7 +273,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-8 glass-card p-6"
                 >
-                    <VelocityChart />
+                    <VelocityChart loading={loading} />
                 </motion.div>
 
                 {/* Sprint Progress */}
@@ -192,7 +281,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-8 glass-card p-6"
                 >
-                    <SprintProgress />
+                    <SprintProgress loading={loading} />
                 </motion.div>
 
                 {/* Risk Radar */}
@@ -200,7 +289,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-4 glass-card p-6"
                 >
-                    <RiskRadar />
+                    <RiskRadar loading={loading} />
                 </motion.div>
 
                 {/* Team Activity */}
@@ -208,7 +297,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-6 glass-card p-6"
                 >
-                    <TeamActivity />
+                    <TeamActivity loading={loading} />
                 </motion.div>
 
                 {/* Quick Actions */}
@@ -216,7 +305,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-6 glass-card p-6"
                 >
-                    <QuickActions />
+                    <QuickActions loading={loading} />
                 </motion.div>
             </div>
         </motion.div>

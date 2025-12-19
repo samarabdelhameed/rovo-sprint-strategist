@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, BrowserRouter } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SprintProvider } from './context/SprintContext'
 import Sidebar from './components/layout/Sidebar'
 import Header from './components/layout/Header'
 import Dashboard from './pages/Dashboard'
@@ -11,7 +12,7 @@ import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import Standup from './pages/Standup'
 
-function App() {
+function AppContent() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
 
     return (
@@ -67,6 +68,14 @@ function App() {
                 </main>
             </div>
         </div>
+    )
+}
+
+function App() {
+    return (
+        <SprintProvider>
+            <AppContent />
+        </SprintProvider>
     )
 }
 
