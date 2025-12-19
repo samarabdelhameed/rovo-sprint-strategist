@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Routes, Route, BrowserRouter } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SprintProvider } from './context/SprintContext'
 import Sidebar from './components/layout/Sidebar'
@@ -16,6 +16,7 @@ import AlertSettings from './pages/AlertSettings'
 import ApplyRecommendations from './pages/ApplyRecommendations'
 import AIChat from './pages/AIChat'
 import SprintGoals from './pages/SprintGoals'
+import Reports from './pages/Reports'
 
 function AppContent() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -73,6 +74,7 @@ function AppContent() {
                             <Route path="/recommendations" element={<ApplyRecommendations />} />
                             <Route path="/ai-chat" element={<AIChat />} />
                             <Route path="/sprint-goals" element={<SprintGoals />} />
+                            <Route path="/reports" element={<Reports />} />
                         </Routes>
                     </AnimatePresence>
                 </main>

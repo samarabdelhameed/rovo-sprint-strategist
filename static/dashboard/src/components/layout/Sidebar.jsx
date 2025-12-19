@@ -16,7 +16,8 @@ import {
     Bell,
     Target,
     Bot,
-    Wrench
+    Wrench,
+    FileText
 } from 'lucide-react'
 
 const menuItems = [
@@ -25,6 +26,7 @@ const menuItems = [
     { path: '/pitstop', icon: Flag, label: 'Pit-Stop', badge: '3' },
     { path: '/leaderboard', icon: Trophy, label: 'Leaderboard', badge: null },
     { path: '/analytics', icon: BarChart3, label: 'Analytics', badge: null },
+    { path: '/reports', icon: FileText, label: 'Reports', badge: null },
     { path: '/standup', icon: MessageSquare, label: 'Standup', badge: 'NEW' },
 ]
 
@@ -289,7 +291,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                             <p className="text-xs text-text-muted mb-3">
                                 Ask anything about your sprint
                             </p>
-                            <NavLink 
+                            <NavLink
                                 to="/ai-chat"
                                 className="w-full btn-glow text-sm py-2 block text-center"
                             >

@@ -1,16 +1,43 @@
 /**
- * 🤖 AI Service - Anthropic Claude Integration
+ * 🤖 AI Service - Free Local AI + Anthropic Claude Integration
  */
 import Anthropic from '@anthropic-ai/sdk';
+import FreeAiService from './freeAiService.js';
 
 const anthropic = process.env.ANTHROPIC_API_KEY
     ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     : null;
 
+// Initialize Free AI Service
+const freeAI = new FreeAiService();
+
 /**
  * Generate sprint analysis using AI
  */
 export async function analyzeSprintWithAI(sprintData) {
+    // Try Free AI Service first
+    if (freeAI.isHealthy()) {
+        try {
+            const result = await freeAI.generateRecommendations(sprintData);
+            if (result.success) {
+                return {
+                    summary: `تحليل السبرينت: معدل الإنجاز ${result.analysis.completionRate}% من ${result.analysis.totalTasks} مهمة`,
+                    riskLevel: result.analysis.completionRate >= 70 ? 'low' : 
+                              result.analysis.completionRate >= 50 ? 'medium' : 'high',
+                    insights: result.recommendations.map(r => r.description),
+                    recommendations: result.recommendations.map(r => ({
+                        title: r.title,
+                        priority: r.priority === 'high' ? 1 : r.priority === 'medium' ? 2 : 3,
+                        impact: r.description
+                    }))
+                };
+            }
+        } catch (error) {
+            console.error('Free AI Service Error:', error);
+        }
+    }
+
+    // Fallback to Anthropic if available
     if (!anthropic) {
         return getFallbackAnalysis(sprintData);
     }
@@ -36,6 +63,25 @@ export async function analyzeSprintWithAI(sprintData) {
  * Generate pit-stop recommendations
  */
 export async function generatePitStopRecommendations(sprintData) {
+    // Try Free AI Service first
+    if (freeAI.isHealthy()) {
+        try {
+            const result = await freeAI.generateRecommendations(sprintData);
+            if (result.success) {
+                return result.recommendations.map(r => ({
+                    type: r.action || 'improve_process',
+                    title: r.title,
+                    description: r.description,
+                    impact: `تحسين متوقع: ${r.impact}`,
+                    affectedIssues: []
+                }));
+            }
+        } catch (error) {
+            console.error('Free AI Pit-Stop Error:', error);
+        }
+    }
+
+    // Fallback to Anthropic if available
     if (!anthropic) {
         return getFallbackRecommendations(sprintData);
     }
@@ -61,6 +107,22 @@ export async function generatePitStopRecommendations(sprintData) {
  * Generate standup summary using AI
  */
 export async function generateStandupSummary(sprintData, activities) {
+    // Try Free AI Service first
+    if (freeAI.isHealthy()) {
+        try {
+            const result = await freeAI.processChat(
+                'قم بإنشاء ملخص للاجتماع اليومي', 
+                { sprintData, activities }
+            );
+            if (result.success) {
+                return result.response;
+            }
+        } catch (error) {
+            console.error('Free AI Standup Error:', error);
+        }
+    }
+
+    // Fallback to Anthropic if available
     if (!anthropic) {
         return getFallbackStandup(sprintData, activities);
     }
@@ -78,6 +140,124 @@ export async function generateStandupSummary(sprintData, activities) {
     } catch (error) {
         console.error('Standup AI Error:', error);
         return getFallbackStandup(sprintData, activities);
+    }
+}
+
+/**
+ * AI Chat functionality - NEW!
+ */
+export async function processAIChat(message, context = {}) {
+    // Use Free AI Service for chat
+    if (freeAI.isHealthy()) {
+        try {
+            const result = await freeAI.processChat(message, context);
+            if (result.success) {
+                return {
+                    success: true,
+                    response: result.response,
+                    intent: result.intent,
+                    timestamp: result.timestamp
+                };
+            }
+        } catch (error) {
+            console.error('Free AI Chat Error:', error);
+        }
+    }
+
+    // Fallback to Anthropic if available
+    if (anthropic) {
+        try {
+            const response = await anthropic.messages.create({
+                model: 'claude-3-haiku-20240307',
+                max_tokens: 512,
+                messages: [{ 
+                    role: 'user', 
+                    content: `أنت مساعد ذكي لإدارة السبرينت. أجب على هذا السؤال: ${message}` 
+                }]
+            });
+
+            return {
+                success: true,
+                response: response.content[0].text,
+                intent: 'general',
+                timestamp: new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('Anthropic Chat Error:', error);
+        }
+    }
+
+    // Final fallback
+    return {
+        success: false,
+        response: 'عذراً، خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً.',
+        error: 'AI service unavailable'
+    };
+}
+
+/**
+ * Risk Analysis - NEW!
+ */
+export async function analyzeRisks(sprintData) {
+    // Use Free AI Service for risk analysis
+    if (freeAI.isHealthy()) {
+        try {
+            const result = await freeAI.analyzeRisks(sprintData);
+            if (result.success) {
+                return result;
+            }
+        } catch (error) {
+            console.error('Free AI Risk Analysis Error:', error);
+        }
+    }
+
+    // Fallback risk analysis
+    return {
+        success: true,
+        riskScore: 50,
+        risks: [
+            {
+                id: 'general_risk',
+                title: 'مخاطر عامة',
+                description: 'تحليل المخاطر الأساسي متاح',
+                severity: 'medium'
+            }
+        ],
+        recommendations: ['مراجعة دورية للمخاطر'],
+        analysis: {
+            totalRisks: 1,
+            highRisks: 0,
+            mediumRisks: 1,
+            lowRisks: 0
+        }
+    };
+}
+
+/**
+ * Get AI Service Status
+ */
+export function getAIServiceStatus() {
+    if (freeAI.isHealthy()) {
+        return {
+            status: 'active',
+            provider: 'Free Local AI',
+            features: ['Smart Recommendations', 'AI Chat', 'Risk Analysis'],
+            cost: 'Free'
+        };
+    } else if (anthropic) {
+        return {
+            status: 'active',
+            provider: 'Anthropic Claude',
+            features: ['Advanced AI Analysis'],
+            cost: 'Paid API'
+        };
+    } else {
+        return {
+            status: 'fallback',
+            provider: 'Basic Analytics',
+            features: ['Basic Analysis'],
+            cost: 'Free'
+        };
     }
 }
 
@@ -291,5 +471,8 @@ ${blockers.length > 0
 export default {
     analyzeSprintWithAI,
     generatePitStopRecommendations,
-    generateStandupSummary
+    generateStandupSummary,
+    processAIChat,
+    analyzeRisks,
+    getAIServiceStatus
 };

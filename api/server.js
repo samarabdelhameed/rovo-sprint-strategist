@@ -24,6 +24,20 @@ app.use((req, res, next) => {
     next();
 });
 
+// Root route
+app.get('/', (req, res) => {
+    res.json({
+        success: true,
+        message: '🏎️ Rovo Sprint Strategist API is running',
+        endpoints: {
+            health: '/api/health',
+            sprint: '/api/sprint',
+            team: '/api/team',
+            analytics: '/api/analytics'
+        }
+    });
+});
+
 // =====================================================
 // HEALTH CHECK
 // =====================================================
@@ -49,6 +63,16 @@ app.get('/api/sprint', async (req, res) => {
         res.json({ success: true, data });
     } catch (error) {
         console.error('Error fetching sprint:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Alias for frontend compatibility
+app.get('/api/sprint/current', async (req, res) => {
+    try {
+        const data = await sprintAnalyzer.getActiveSprintData();
+        res.json({ success: true, data });
+    } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -121,23 +145,23 @@ app.get('/api/issues', async (req, res) => {
 app.patch('/api/issues/:id', async (req, res) => {
     try {
         const { status } = req.body;
-        
+
         // Update in local database
         const completedAt = status === 'done' ? new Date().toISOString() : null;
         const result = queries.updateIssue.run(status, completedAt, req.params.id);
-        
+
         // Get updated issue - need to get all issues for the sprint first
         const sprintData = await sprintAnalyzer.getActiveSprintData();
         const updatedIssue = sprintData.issues.find(i => i.id === req.params.id);
-        
+
         if (updatedIssue) {
             console.log(`✅ Updated issue ${updatedIssue.key} to status: ${status}`);
         }
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             data: updatedIssue,
-            message: `Issue updated to ${status}` 
+            message: `Issue updated to ${status}`
         });
     } catch (error) {
         console.error('Error updating issue:', error);
@@ -149,18 +173,9 @@ app.patch('/api/issues/:id', async (req, res) => {
 // TEAM ENDPOINTS
 // =====================================================
 
-/**
- * GET /api/team - Get all team members
- */
-app.get('/api/team', async (req, res) => {
-    try {
-        // Use sprintAnalyzer which already has reliable data fetching
-        const sprintData = await sprintAnalyzer.getActiveSprintData();
-        res.json({ success: true, data: sprintData.team });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// Team members are now handled by /api/team router
+
+// Alias handled by proxy or can be moved to router if needed
 
 /**
  * GET /api/team/workload - Get team workload distribution
@@ -295,6 +310,23 @@ app.get('/api/standup', async (req, res) => {
         // Save to database
         if (supabase) {
             await supabase.from('standup_notes').insert(standup);
+        } else {
+            // Save to local SQLite
+            const id = 'standup-' + Date.now();
+            localDB.db.prepare(`
+                INSERT INTO standup_notes (id, sprint_id, date, day_number, completed_items, in_progress_items, blockers, health_score, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                id,
+                standup.sprint_id,
+                standup.date,
+                standup.day_number,
+                JSON.stringify(standup.completed_items),
+                JSON.stringify(standup.in_progress_items),
+                JSON.stringify(standup.blockers),
+                standup.health_score,
+                standup.notes
+            );
         }
 
         res.json({ success: true, data: standup });
@@ -369,11 +401,11 @@ app.post('/api/pitstop/:id/apply', async (req, res) => {
     try {
         // Apply recommendation in local database
         queries.applyRecommendation.run(req.params.id);
-        
+
         console.log(`✅ Applied pit-stop recommendation: ${req.params.id}`);
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Recommendation applied successfully',
             data: { id: req.params.id, status: 'applied' }
         });
@@ -454,62 +486,70 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/analytics', async (req, res) => {
     try {
         const sprintData = await sprintAnalyzer.getActiveSprintData();
-
-        // Velocity trend (last 5 sprints)
-        const velocityTrend = [
-            { sprint: 'Sprint 38', velocity: 42, committed: 45 },
-            { sprint: 'Sprint 39', velocity: 38, committed: 40 },
-            { sprint: 'Sprint 40', velocity: 45, committed: 48 },
-            { sprint: 'Sprint 41', velocity: 41, committed: 44 },
-            { sprint: 'Sprint 42', velocity: sprintData.velocity, committed: sprintData.totalPoints }
-        ];
-
-        // Issue distribution
-        const issueDistribution = [
-            { status: 'Done', count: sprintData.issuesCompleted, color: '#00D26A' },
-            { status: 'In Progress', count: sprintData.issuesInProgress, color: '#F97316' },
-            { status: 'To Do', count: sprintData.issuesTodo, color: '#6B7280' },
-            { status: 'Blocked', count: sprintData.blockersCount, color: '#EF4444' }
-        ];
-
-        // Team performance
-        const teamPerformance = sprintData.teamMetrics.map(m => ({
-            name: m.name,
-            completedPoints: m.completedPoints,
-            totalPoints: m.points,
-            efficiency: m.completionRate
-        }));
-
-        // Health trend
-        const healthTrend = sprintData.metrics?.length > 0
-            ? sprintData.metrics.map((m, i) => ({
-                day: i + 1,
-                score: m.health_score
-            }))
-            : Array.from({ length: 5 }, (_, i) => ({
-                day: i + 1,
-                score: 65 + i * 3
-            }));
-
-        res.json({
-            success: true,
-            data: {
-                velocityTrend,
-                issueDistribution,
-                teamPerformance,
-                healthTrend,
-                summary: {
-                    averageVelocity: Math.round(velocityTrend.reduce((s, v) => s + v.velocity, 0) / velocityTrend.length),
-                    velocityChange: '+12%',
-                    estimationAccuracy: '85%',
-                    sprintSuccessRate: '78%'
-                }
-            }
-        });
+        const data = await getAnalyticsData(sprintData);
+        res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+// Alias for frontend compatibility
+app.get('/api/analytics/metrics', async (req, res) => {
+    try {
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        res.json({ success: true, data: await getAnalyticsData(sprintData) });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+async function getAnalyticsData(sprintData) {
+    // Re-use logic from /api/analytics
+    const velocityTrend = [
+        { sprint: 'Sprint 38', velocity: 42, committed: 45 },
+        { sprint: 'Sprint 39', velocity: 38, committed: 40 },
+        { sprint: 'Sprint 40', velocity: 45, committed: 48 },
+        { sprint: 'Sprint 41', velocity: 41, committed: 44 },
+        { sprint: 'Sprint 42', velocity: sprintData.velocity, committed: sprintData.totalPoints }
+    ];
+
+    const issueDistribution = [
+        { status: 'Done', count: sprintData.issuesCompleted, color: '#00D26A' },
+        { status: 'In Progress', count: sprintData.issuesInProgress, color: '#F97316' },
+        { status: 'To Do', count: sprintData.issuesTodo, color: '#6B7280' },
+        { status: 'Blocked', count: sprintData.blockersCount, color: '#EF4444' }
+    ];
+
+    const teamPerformance = sprintData.teamMetrics.map(m => ({
+        name: m.name,
+        completedPoints: m.completedPoints,
+        totalPoints: m.points,
+        efficiency: m.completionRate
+    }));
+
+    const healthTrend = sprintData.metrics?.length > 0
+        ? sprintData.metrics.map((m, i) => ({
+            day: i + 1,
+            score: m.health_score
+        }))
+        : Array.from({ length: 5 }, (_, i) => ({
+            day: i + 1,
+            score: 65 + i * 3
+        }));
+
+    return {
+        velocityTrend,
+        issueDistribution,
+        teamPerformance,
+        healthTrend,
+        summary: {
+            averageVelocity: Math.round(velocityTrend.reduce((s, v) => s + v.velocity, 0) / velocityTrend.length),
+            velocityChange: '+12%',
+            estimationAccuracy: '85%',
+            sprintSuccessRate: '78%'
+        }
+    };
+}
 
 // =====================================================
 // ACTIVITIES ENDPOINTS
@@ -588,6 +628,7 @@ import recommendationsRouter from './routes/recommendations.js';
 import aiChatRouter from './routes/aiChat.js';
 import sprintGoalsRouter from './routes/sprintGoals.js';
 import projectSetupRouter from './routes/projectSetup.js';
+import teamRouter from './routes/team.js';
 
 // Use new routes
 app.use('/api/alert-settings', alertSettingsRouter);
@@ -597,6 +638,7 @@ app.use('/api/ai-chat', aiChatRouter);
 app.use('/api/test-alert', alertSettingsRouter);
 app.use('/api/sprint-goals', sprintGoalsRouter);
 app.use('/api/project-setup', projectSetupRouter);
+app.use('/api/team', teamRouter);
 
 // =====================================================
 // SETTINGS ENDPOINTS
@@ -683,10 +725,21 @@ app.use((req, res) => {
 // START SERVER
 // =====================================================
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     // Initialize local database to check if it's working
     try {
         localDB.initializeDatabase();
+
+        // Check AI service status
+        let aiStatusText = '⚠️  Fallback Mode';
+        try {
+            const aiService = await import('./services/aiService.js');
+            const aiStatus = aiService.default.getAIServiceStatus();
+            aiStatusText = `${aiStatus.status === 'active' ? '✅' : '⚠️'} ${aiStatus.provider} (${aiStatus.cost})`;
+        } catch (e) {
+            console.error('Could not check AI status:', e);
+        }
+
         console.log(`
 🏎️  ═══════════════════════════════════════════════════
    ROVO SPRINT STRATEGIST API
@@ -696,7 +749,7 @@ app.listen(PORT, () => {
    📊 Health check:      http://localhost:${PORT}/api/health
    🗄️  Database:         ✅ Local Cache (Jira Data Only)
    🔗 Jira Integration:  ✅ Real API Connection
-   🤖 AI Service:        ${process.env.ANTHROPIC_API_KEY ? '✅ Ready' : '⚠️  Fallback Mode'}
+   🤖 AI Service:        ${aiStatusText}
    
    📋 Next Steps:
    1. Open http://localhost:3000
@@ -716,7 +769,7 @@ app.listen(PORT, () => {
    📊 Health check:      http://localhost:${PORT}/api/health
    🗄️  Database:         ❌ Error: ${error.message}
    🔗 Jira Integration:  ⚠️  Configure in Project Setup
-   🤖 AI Service:        ${process.env.ANTHROPIC_API_KEY ? '✅ Ready' : '⚠️  Fallback Mode'}
+   🤖 AI Service:        ⚠️  Fallback Mode
    
    ═══════════════════════════════════════════════════
 `);

@@ -2,6 +2,7 @@ import express from 'express';
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import aiService from '../services/aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,17 +33,54 @@ db.exec(`
 `);
 
 // Get current recommendations
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    // Generate dynamic recommendations based on current sprint data
+    // Get sprint data for AI analysis
     const sprintData = getSprintAnalysis();
+    
+    // Try to get AI-powered recommendations first
+    try {
+      const aiRecommendations = await aiService.generatePitStopRecommendations(sprintData);
+      
+      if (aiRecommendations && aiRecommendations.length > 0) {
+        // Convert AI recommendations to our format
+        const formattedRecommendations = aiRecommendations.map((rec, index) => ({
+          id: index + 1,
+          title: rec.title,
+          description: rec.description,
+          problem: rec.description,
+          solution: rec.description,
+          action: rec.type || 'improve_process',
+          priority: rec.priority || 'medium',
+          successProbability: 75,
+          estimatedTime: '1-2 ساعات',
+          expectedImpact: rec.impact || 'تحسين عام في الأداء',
+          parameters: {},
+          affectedTasks: rec.affectedIssues || []
+        }));
+
+        res.json({
+          success: true,
+          recommendations: formattedRecommendations,
+          sprintId: 'SPRINT-2024-01',
+          generatedAt: new Date().toISOString(),
+          source: 'AI-Powered'
+        });
+        return;
+      }
+    } catch (aiError) {
+      console.error('AI recommendations failed, falling back:', aiError);
+    }
+
+    // Fallback to traditional recommendations
     const recommendations = generateRecommendations(sprintData);
 
     res.json({
       success: true,
       recommendations: recommendations,
       sprintId: 'SPRINT-2024-01',
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
+      source: 'Rule-Based'
     });
   } catch (error) {
     console.error('Error fetching recommendations:', error);
@@ -79,6 +117,50 @@ router.post('/apply', async (req, res) => {
     }
   } catch (error) {
     console.error('Error applying recommendation:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Risk Analysis endpoint - NEW!
+router.get('/risks', async (req, res) => {
+  try {
+    const sprintData = getSprintAnalysis();
+    
+    // Use AI service for risk analysis
+    const riskAnalysis = await aiService.analyzeRisks(sprintData);
+    
+    if (riskAnalysis.success) {
+      res.json({
+        success: true,
+        ...riskAnalysis,
+        sprintId: 'SPRINT-2024-01',
+        source: 'AI-Powered'
+      });
+    } else {
+      // Fallback risk analysis
+      res.json({
+        success: true,
+        riskScore: 50,
+        risks: [
+          {
+            id: 'completion_risk',
+            title: 'مخاطر عدم الإنجاز',
+            description: `معدل الإنجاز الحالي ${sprintData.completionRate.toFixed(1)}%`,
+            severity: sprintData.completionRate < 50 ? 'high' : 'medium'
+          }
+        ],
+        recommendations: ['مراجعة نطاق السبرينت'],
+        analysis: {
+          totalRisks: 1,
+          highRisks: sprintData.completionRate < 50 ? 1 : 0,
+          mediumRisks: sprintData.completionRate >= 50 ? 1 : 0,
+          lowRisks: 0
+        },
+        source: 'Fallback'
+      });
+    }
+  } catch (error) {
+    console.error('Error analyzing risks:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

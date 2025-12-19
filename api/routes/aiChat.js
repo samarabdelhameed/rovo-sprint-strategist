@@ -2,6 +2,7 @@ import express from 'express';
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import aiService from '../services/aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,20 +30,40 @@ router.post('/', async (req, res) => {
     // Get current sprint data for context
     const sprintData = getSprintContext();
     
-    // Generate AI response based on message and context
-    const response = await generateAIResponse(message, sprintData, context);
-    
-    // Save to chat history
-    db.prepare(`
-      INSERT INTO chat_history (message, response, context)
-      VALUES (?, ?, ?)
-    `).run(message, response.content, context || 'general');
-
-    res.json({
-      success: true,
-      response: response.content,
-      suggestions: response.suggestions || []
+    // Use the new AI service
+    const aiResponse = await aiService.processAIChat(message, { 
+      sprintData, 
+      context 
     });
+    
+    if (aiResponse.success) {
+      // Save to chat history
+      db.prepare(`
+        INSERT INTO chat_history (message, response, context)
+        VALUES (?, ?, ?)
+      `).run(message, aiResponse.response, context || 'general');
+
+      res.json({
+        success: true,
+        response: aiResponse.response,
+        intent: aiResponse.intent,
+        suggestions: getSuggestions(aiResponse.intent)
+      });
+    } else {
+      // Fallback to old system
+      const response = await generateAIResponse(message, sprintData, context);
+      
+      db.prepare(`
+        INSERT INTO chat_history (message, response, context)
+        VALUES (?, ?, ?)
+      `).run(message, response.content, context || 'general');
+
+      res.json({
+        success: true,
+        response: response.content,
+        suggestions: response.suggestions || []
+      });
+    }
   } catch (error) {
     console.error('Error in AI chat:', error);
     res.status(500).json({ 
@@ -51,6 +72,53 @@ router.post('/', async (req, res) => {
     });
   }
 });
+
+// Get AI Service Status
+router.get('/status', (req, res) => {
+  try {
+    const status = aiService.getAIServiceStatus();
+    res.json({
+      success: true,
+      ...status
+    });
+  } catch (error) {
+    console.error('Error getting AI status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+function getSuggestions(intent) {
+  const suggestions = {
+    recommendation: [
+      'كيف أطبق هذه التوصيات؟',
+      'ما هي الأولوية في التطبيق؟',
+      'اقترح المزيد من الحلول'
+    ],
+    risk_analysis: [
+      'كيف نقلل هذه المخاطر؟',
+      'ما هي الإجراءات العاجلة؟',
+      'تحليل تأثير المخاطر'
+    ],
+    performance: [
+      'كيف نحسن الأداء؟',
+      'ما هي معوقات الأداء؟',
+      'مقارنة مع السبرينتات السابقة'
+    ],
+    team_management: [
+      'كيف نحسن توزيع المهام؟',
+      'من يحتاج مساعدة في الفريق؟',
+      'اقتراحات لتحسين التعاون'
+    ],
+    general: [
+      'كيف يبدو أداء السبرينت؟',
+      'ما هي المخاطر الحالية؟',
+      'اقترح توصيات للتحسين',
+      'هل سننجح في الموعد المحدد؟'
+    ]
+  };
+  
+  return suggestions[intent] || suggestions.general;
+}
 
 // Get chat history
 router.get('/history', (req, res) => {
@@ -87,7 +155,7 @@ function getSprintContext() {
     const sprintMetrics = db.prepare(`
       SELECT * FROM sprint_metrics 
       WHERE sprint_id = 'SPRINT-2024-01'
-      ORDER BY date DESC 
+      ORDER BY recorded_at DESC 
       LIMIT 7
     `).all();
 

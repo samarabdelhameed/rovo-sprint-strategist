@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Sphere, MeshDistortMaterial } from '@react-three/drei'
+import { useNavigate } from 'react-router-dom'
 import {
     TrendingUp,
     TrendingDown,
@@ -73,6 +74,7 @@ function StatSkeleton() {
 export default function Dashboard() {
     const { sprint, metrics, loading, error, lastUpdated, refresh } = useSprint()
     const [isRefreshing, setIsRefreshing] = useState(false)
+    const navigate = useNavigate()
 
     const handleRefresh = async () => {
         setIsRefreshing(true)
@@ -193,6 +195,10 @@ export default function Dashboard() {
                         className="btn-glow"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                            console.log('Navigating to AI Chat...');
+                            navigate('/ai-chat');
+                        }}
                     >
                         <Zap className="w-4 h-4 mr-2" />
                         Ask Rovo AI
