@@ -95,21 +95,20 @@ app.get('/api/sprint/:id/burndown', async (req, res) => {
  */
 app.get('/api/issues', async (req, res) => {
     try {
-        if (!supabase) {
-            const data = await sprintAnalyzer.getActiveSprintData();
-            return res.json({ success: true, data: data.issues });
+        // Use sprintAnalyzer which already has reliable data fetching
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        let issues = sprintData.issues;
+
+        // Apply optional filters
+        const { status, assignee } = req.query;
+        if (status) {
+            issues = issues.filter(i => i.status === status);
+        }
+        if (assignee) {
+            issues = issues.filter(i => i.assignee_id === assignee);
         }
 
-        const { status, assignee } = req.query;
-        let query = supabase.from('issues').select('*, assignee:team_members(*)');
-
-        if (status) query = query.eq('status', status);
-        if (assignee) query = query.eq('assignee_id', assignee);
-
-        const { data, error } = await query.order('priority', { ascending: true });
-        if (error) throw error;
-
-        res.json({ success: true, data });
+        res.json({ success: true, data: issues });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -163,19 +162,9 @@ app.patch('/api/issues/:id', async (req, res) => {
  */
 app.get('/api/team', async (req, res) => {
     try {
-        if (!supabase) {
-            const data = await sprintAnalyzer.getActiveSprintData();
-            return res.json({ success: true, data: data.team });
-        }
-
-        const { data, error } = await supabase
-            .from('team_members')
-            .select('*')
-            .eq('is_active', true)
-            .order('name');
-
-        if (error) throw error;
-        res.json({ success: true, data });
+        // Use sprintAnalyzer which already has reliable data fetching
+        const sprintData = await sprintAnalyzer.getActiveSprintData();
+        res.json({ success: true, data: sprintData.team });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
