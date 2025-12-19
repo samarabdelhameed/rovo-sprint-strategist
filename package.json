@@ -1,0 +1,61 @@
+{
+  "name": "rovo-sprint-strategist",
+  "version": "1.0.0",
+  "description": "AI-Powered Sprint Intelligence for Agile Teams - Inspired by F1 Race Strategy",
+  "author": "Codegeist 2025 Team",
+  "license": "MIT",
+  "private": true,
+  "keywords": [
+    "atlassian",
+    "forge",
+    "jira",
+    "rovo",
+    "ai",
+    "sprint",
+    "agile",
+    "scrum",
+    "f1",
+    "codegeist"
+  ],
+  "scripts": {
+    "lint": "eslint src/**/*.js src/**/*.jsx",
+    "lint:fix": "eslint src/**/*.js src/**/*.jsx --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "build": "npm run build:dashboard && npm run build:issue-risk",
+    "build:dashboard": "cd static/dashboard && npm run build",
+    "build:issue-risk": "cd static/issue-risk && npm run build",
+    "deploy": "forge deploy",
+    "deploy:prod": "forge deploy --environment production",
+    "install:app": "forge install",
+    "tunnel": "forge tunnel",
+    "logs": "forge logs",
+    "register": "forge register"
+  },
+  "dependencies": {
+    "@forge/api": "*",
+    "@forge/resolver": "*",
+    "@forge/ui": "*",
+    "date-fns": "^3.2.0",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@forge/cli": "^10.0.0",
+    "@babel/core": "^7.23.7",
+    "@babel/preset-env": "^7.23.8",
+    "@babel/preset-react": "^7.23.3",
+    "@types/jest": "^29.5.11",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "forge": {
+    "bundler": "esbuild"
+  }
+}

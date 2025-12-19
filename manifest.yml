@@ -1,0 +1,287 @@
+modules:
+  # ==========================================
+  # JIRA MODULES
+  # ==========================================
+  
+  # Main Sprint Dashboard - Project Page
+  jira:projectPage:
+    - key: sprint-strategist-dashboard
+      title: Sprint Strategist
+      resource: dashboard
+      resolver:
+        function: dashboardResolver
+      icon: static/icons/dashboard-icon.svg
+
+  # Sprint Health Panel - Board View
+  jira:boardBackgroundScript:
+    - key: sprint-health-monitor
+      function: sprintHealthMonitor
+      
+  # Issue Glance - Individual Issue View
+  jira:issueGlance:
+    - key: issue-risk-indicator
+      title: Risk Assessment
+      resource: issueRisk
+      resolver:
+        function: issueRiskResolver
+      icon: static/icons/risk-icon.svg
+
+  # ==========================================
+  # ROVO AI AGENTS
+  # ==========================================
+  
+  rovo:agent:
+    - key: sprint-strategist-agent
+      name: Sprint Strategist
+      description: |
+        Your AI-powered sprint advisor, inspired by F1 race strategy.
+        Ask me about sprint health, blockers, predictions, and recommendations.
+      prompt: |
+        You are the Sprint Strategist, an AI assistant specialized in agile sprint management.
+        You analyze sprint data, identify risks, and provide strategic recommendations.
+        
+        Your personality:
+        - Think like an F1 race strategist - always looking ahead
+        - Be proactive in identifying problems before they occur
+        - Provide data-driven insights with actionable recommendations
+        - Use racing terminology when appropriate (pit-stop, velocity, etc.)
+        
+        When responding:
+        1. Always check current sprint health first
+        2. Identify any blockers or risks
+        3. Provide specific, actionable recommendations
+        4. Reference data from Jira to support your analysis
+      actions:
+        - analyzeSprintAction
+        - predictVelocityAction
+        - generateStandupAction
+        - suggestPitStopAction
+        - getSprintHealthAction
+        - identifyBlockersAction
+
+    - key: standup-assistant-agent
+      name: Standup Assistant
+      description: |
+        Automatically generates daily standup summaries from your Jira data.
+        Save 15 minutes per standup!
+      prompt: |
+        You are the Standup Assistant, helping teams run efficient standups.
+        Generate concise, actionable standup summaries based on Jira data.
+        
+        Format your responses as:
+        - ✅ Completed Yesterday
+        - 🔄 In Progress Today
+        - 🚫 Blockers
+        - 📊 Sprint Status
+      actions:
+        - generateStandupAction
+        - identifyBlockersAction
+
+  # ==========================================
+  # ROVO ACTIONS
+  # ==========================================
+  
+  rovo:action:
+    - key: analyzeSprintAction
+      name: Analyze Sprint
+      description: Analyze sprint health, velocity, and risks
+      function: analyzeSprintHandler
+      inputs:
+        sprintId:
+          type: string
+          title: Sprint ID
+          required: false
+        includeRisks:
+          type: boolean
+          title: Include Risks
+          required: false
+
+    - key: predictVelocityAction
+      name: Predict Velocity
+      description: Predict sprint completion using AI
+      function: predictVelocityHandler
+      inputs:
+        sprintId:
+          type: string
+          title: Sprint ID
+          required: false
+        confidence:
+          type: boolean
+          title: Include Confidence Score
+          required: false
+
+    - key: generateStandupAction
+      name: Generate Standup
+      description: Auto-generate daily standup summary
+      function: generateStandupHandler
+      inputs:
+        sprintId:
+          type: string
+          title: Sprint ID
+          required: false
+        date:
+          type: string
+          title: Date (YYYY-MM-DD)
+          required: false
+
+    - key: suggestPitStopAction
+      name: Suggest Pit-Stop
+      description: Get AI recommendations for sprint adjustments
+      function: suggestPitStopHandler
+      inputs:
+        sprintId:
+          type: string
+          title: Sprint ID
+          required: false
+        urgency:
+          type: string
+          title: Urgency Level (low/medium/high)
+          required: false
+
+    - key: getSprintHealthAction
+      name: Get Sprint Health
+      description: Get current sprint health score (0-100)
+      function: getSprintHealthHandler
+      inputs:
+        sprintId:
+          type: string
+          title: Sprint ID
+          required: false
+
+    - key: identifyBlockersAction
+      name: Identify Blockers
+      description: Find all blocked issues in current sprint
+      function: identifyBlockersHandler
+      inputs:
+        sprintId:
+          type: string
+          title: Sprint ID
+          required: false
+        stuckDays:
+          type: number
+          title: Days Stuck Threshold
+          required: false
+
+  # ==========================================
+  # TRIGGERS
+  # ==========================================
+  
+  trigger:
+    # Issue Events
+    - key: issue-created-trigger
+      function: issueCreatedHandler
+      events:
+        - avi:jira:created:issue
+        
+    - key: issue-updated-trigger
+      function: issueUpdatedHandler
+      events:
+        - avi:jira:updated:issue
+
+    # Sprint Events
+    - key: sprint-started-trigger
+      function: sprintStartedHandler
+      events:
+        - avi:jira:started:sprint
+
+    - key: sprint-completed-trigger
+      function: sprintCompletedHandler
+      events:
+        - avi:jira:completed:sprint
+
+  # Scheduled Triggers
+  scheduledTrigger:
+    - key: daily-analysis-trigger
+      function: dailyAnalysisHandler
+      interval: day
+
+    - key: health-check-trigger
+      function: healthCheckHandler
+      interval: hour
+
+  # ==========================================
+  # FUNCTIONS
+  # ==========================================
+  
+  function:
+    # Resolvers
+    - key: dashboardResolver
+      handler: src/panels/dashboardResolver.handler
+      
+    - key: issueRiskResolver
+      handler: src/panels/issueRiskResolver.handler
+
+    # Background Scripts
+    - key: sprintHealthMonitor
+      handler: src/triggers/sprintHealthMonitor.handler
+
+    # Action Handlers
+    - key: analyzeSprintHandler
+      handler: src/actions/analyzeSprintAction.handler
+      
+    - key: predictVelocityHandler
+      handler: src/actions/predictVelocityAction.handler
+      
+    - key: generateStandupHandler
+      handler: src/actions/generateStandupAction.handler
+      
+    - key: suggestPitStopHandler
+      handler: src/actions/suggestPitStopAction.handler
+      
+    - key: getSprintHealthHandler
+      handler: src/actions/getSprintHealthAction.handler
+      
+    - key: identifyBlockersHandler
+      handler: src/actions/identifyBlockersAction.handler
+
+    # Trigger Handlers
+    - key: issueCreatedHandler
+      handler: src/triggers/issueCreatedTrigger.handler
+      
+    - key: issueUpdatedHandler
+      handler: src/triggers/issueUpdatedTrigger.handler
+      
+    - key: sprintStartedHandler
+      handler: src/triggers/sprintStartedTrigger.handler
+      
+    - key: sprintCompletedHandler
+      handler: src/triggers/sprintCompletedTrigger.handler
+      
+    - key: dailyAnalysisHandler
+      handler: src/triggers/scheduledAnalysisTrigger.dailyHandler
+      
+    - key: healthCheckHandler
+      handler: src/triggers/scheduledAnalysisTrigger.healthCheckHandler
+
+  # ==========================================
+  # RESOURCES (UI)
+  # ==========================================
+  
+  resources:
+    - key: dashboard
+      path: static/dashboard/build
+      
+    - key: issueRisk
+      path: static/issue-risk/build
+
+# ==========================================
+# APP CONFIGURATION
+# ==========================================
+
+app:
+  id: ari:cloud:ecosystem::app/rovo-sprint-strategist
+  name: Rovo Sprint Strategist
+  
+permissions:
+  scopes:
+    - read:jira-work
+    - read:jira-user
+    - write:jira-work
+    - storage:app
+    - read:sprint:jira-software
+    - write:sprint:jira-software
+  external:
+    fetch:
+      backend:
+        - api.anthropic.com
+        - api.openai.com

@@ -1,0 +1,106 @@
+/**
+ * 🎨 Williams Racing Theme - Sprint Strategist
+ */
+
+:root {
+  /* Williams Racing Colors */
+  --primary: #002B5B;
+  --primary-dark: #001a38;
+  --primary-light: #003d80;
+  --secondary: #FFFFFF;
+  --accent: #E10600;
+  --accent-light: #ff3333;
+  
+  /* Background Colors */
+  --bg-dark: #0A1628;
+  --bg-card: #0F2136;
+  --bg-elevated: #152942;
+  
+  /* Status Colors */
+  --success: #00D26A;
+  --warning: #FFB800;
+  --danger: #E10600;
+  --info: #0091FF;
+  
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #8CA3BA;
+  --text-muted: #5A7088;
+  
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+}
+
+/* Typography */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+}
+
+code, pre {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Utility Classes */
+.text-gradient {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px rgba(225, 6, 0, 0.3);
+}
+
+.glow-success {
+  box-shadow: 0 0 20px rgba(0, 210, 106, 0.3);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-pulse { animation: pulse 2s infinite; }
+.animate-slide-in { animation: slideIn 0.3s ease-out; }
+.animate-spin { animation: spin 1s linear infinite; }
