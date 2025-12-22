@@ -48,3 +48,6 @@ temp/
 # OS files
 Thumbs.db
 .vercel
+
+# Local Netlify folder
+.netlify

@@ -2,6 +2,7 @@
     "name": "sprint-strategist-ui",
     "version": "1.0.0",
     "type": "module",
+    "homepage": "https://samarabdelhameed.github.io/rovo-sprint-strategist",
     "scripts": {
         "dev": "bunx --bun vite",
         "build": "bunx --bun vite build",
