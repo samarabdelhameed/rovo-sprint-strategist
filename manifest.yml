@@ -2,7 +2,7 @@ modules:
   # ==========================================
   # JIRA MODULES
   # ==========================================
-  
+
   # Main Sprint Dashboard - Project Page
   jira:projectPage:
     - key: sprint-strategist-dashboard
@@ -16,7 +16,7 @@ modules:
   jira:boardBackgroundScript:
     - key: sprint-health-monitor
       function: sprintHealthMonitor
-      
+
   # Issue Glance - Individual Issue View
   jira:issueGlance:
     - key: issue-risk-indicator
@@ -29,7 +29,7 @@ modules:
   # ==========================================
   # ROVO AI AGENTS
   # ==========================================
-  
+
   rovo:agent:
     - key: sprint-strategist-agent
       name: Sprint Strategist
@@ -39,13 +39,13 @@ modules:
       prompt: |
         You are the Sprint Strategist, an AI assistant specialized in agile sprint management.
         You analyze sprint data, identify risks, and provide strategic recommendations.
-        
+
         Your personality:
         - Think like an F1 race strategist - always looking ahead
         - Be proactive in identifying problems before they occur
         - Provide data-driven insights with actionable recommendations
         - Use racing terminology when appropriate (pit-stop, velocity, etc.)
-        
+
         When responding:
         1. Always check current sprint health first
         2. Identify any blockers or risks
@@ -67,7 +67,7 @@ modules:
       prompt: |
         You are the Standup Assistant, helping teams run efficient standups.
         Generate concise, actionable standup summaries based on Jira data.
-        
+
         Format your responses as:
         - ✅ Completed Yesterday
         - 🔄 In Progress Today
@@ -80,7 +80,7 @@ modules:
   # ==========================================
   # ROVO ACTIONS
   # ==========================================
-  
+
   rovo:action:
     - key: analyzeSprintAction
       name: Analyze Sprint
@@ -165,14 +165,14 @@ modules:
   # ==========================================
   # TRIGGERS
   # ==========================================
-  
+
   trigger:
     # Issue Events
     - key: issue-created-trigger
       function: issueCreatedHandler
       events:
         - avi:jira:created:issue
-        
+
     - key: issue-updated-trigger
       function: issueUpdatedHandler
       events:
@@ -202,12 +202,12 @@ modules:
   # ==========================================
   # FUNCTIONS
   # ==========================================
-  
+
   function:
     # Resolvers
     - key: dashboardResolver
       handler: src/panels/dashboardResolver.handler
-      
+
     - key: issueRiskResolver
       handler: src/panels/issueRiskResolver.handler
 
@@ -218,49 +218,49 @@ modules:
     # Action Handlers
     - key: analyzeSprintHandler
       handler: src/actions/analyzeSprintAction.handler
-      
+
     - key: predictVelocityHandler
       handler: src/actions/predictVelocityAction.handler
-      
+
     - key: generateStandupHandler
       handler: src/actions/generateStandupAction.handler
-      
+
     - key: suggestPitStopHandler
       handler: src/actions/suggestPitStopAction.handler
-      
+
     - key: getSprintHealthHandler
       handler: src/actions/getSprintHealthAction.handler
-      
+
     - key: identifyBlockersHandler
       handler: src/actions/identifyBlockersAction.handler
 
     # Trigger Handlers
     - key: issueCreatedHandler
       handler: src/triggers/issueCreatedTrigger.handler
-      
+
     - key: issueUpdatedHandler
       handler: src/triggers/issueUpdatedTrigger.handler
-      
+
     - key: sprintStartedHandler
       handler: src/triggers/sprintStartedTrigger.handler
-      
+
     - key: sprintCompletedHandler
       handler: src/triggers/sprintCompletedTrigger.handler
-      
+
     - key: dailyAnalysisHandler
       handler: src/triggers/scheduledAnalysisTrigger.dailyHandler
-      
+
     - key: healthCheckHandler
       handler: src/triggers/scheduledAnalysisTrigger.healthCheckHandler
 
   # ==========================================
   # RESOURCES (UI)
   # ==========================================
-  
+
   resources:
     - key: dashboard
       path: static/dashboard/build
-      
+
     - key: issueRisk
       path: static/issue-risk/build
 
@@ -269,9 +269,9 @@ modules:
 # ==========================================
 
 app:
-  id: ari:cloud:ecosystem::app/rovo-sprint-strategist
+  id: ari:cloud:ecosystem::app/aa31a6b3-9ec1-49a6-a8e7-35eac7f402ee
   name: Rovo Sprint Strategist
-  
+
 permissions:
   scopes:
     - read:jira-work
