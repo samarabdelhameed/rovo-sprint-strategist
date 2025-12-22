@@ -10,22 +10,22 @@
             "src": "static/dashboard/package.json",
             "use": "@vercel/static-build",
             "config": {
-                "distDir": "dist"
+                "distDir": "build"
             }
         }
     ],
-    "routes": [
+    "rewrites": [
         {
-            "src": "/api/(.*)",
-            "dest": "/api/server.js"
+            "source": "/api/(.*)",
+            "destination": "/api/server.js"
         },
         {
-            "src": "/assets/(.*)",
-            "dest": "/static/dashboard/dist/assets/$1"
+            "source": "/assets/(.*)",
+            "destination": "/static/dashboard/build/assets/$1"
         },
         {
-            "src": "/(.*)",
-            "dest": "/static/dashboard/dist/$1"
+            "source": "/((?!api/).*)",
+            "destination": "/static/dashboard/build/$1"
         }
     ],
     "env": {
