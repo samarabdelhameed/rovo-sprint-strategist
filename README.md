@@ -9,7 +9,7 @@
 [![Jira Integration](https://img.shields.io/badge/Integrates%20with-Jira-0052CC?style=for-the-badge&logo=jira&logoColor=white)](https://www.atlassian.com/software/jira)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-### 🌐 [Live Demo](https://rovo-sprint-strategist-5jsu6fv3q.vercel.app) | 🎬 [YouTube Demo](https://youtu.be/h2WzxyE9nN8) | 📦 [GitHub Repository](https://github.com/samarabdelhameed/rovo-sprint-strategist)
+### 🌐 [Live Demo](https://rovo-sprint-strategist.surge.sh) | 🎬 [YouTube Demo](https://youtu.be/h2WzxyE9nN8) | 📦 [GitHub Repository](https://github.com/samarabdelhameed/rovo-sprint-strategist)
 
 <img src="assets/banner.png" alt="Rovo Sprint Strategist Banner" width="800"/>
 
