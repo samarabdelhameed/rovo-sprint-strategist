@@ -123,9 +123,15 @@ router.post('/sync', async (req, res) => {
     // Sync all data from Jira
     const syncResult = await jiraService.syncAllData();
     
+    // Determine if we're using real Jira data or fallback data
+    const isRealData = syncResult.sprint.id !== 'DEMO-SPRINT-1';
+    
     res.json({
       success: true,
-      message: 'Data synced successfully from Jira',
+      message: isRealData 
+        ? 'Data synced successfully from Jira'
+        : 'Failed to sync from Jira, using cached data',
+      dataSource: isRealData ? 'jira' : 'cached',
       data: {
         sprint: syncResult.sprint.name,
         issuesCount: syncResult.issues.length,
@@ -136,7 +142,8 @@ router.post('/sync', async (req, res) => {
     console.error('Error syncing from Jira:', error);
     res.status(500).json({ 
       success: false, 
-      error: `Failed to sync from Jira: ${error.message}` 
+      error: `Failed to sync from Jira: ${error.message}`,
+      suggestion: 'You can:\n1. Check your Jira configuration\n2. Enable Demo Mode to test with sample data\n3. Try again later'
     });
   }
 });

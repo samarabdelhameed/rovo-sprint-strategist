@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
     console.error('Error in AI chat:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'حدث خطأ في الاتصال بالذكاء الاصطناعي' 
+      error: 'Error connecting to AI service' 
     });
   }
 });
@@ -70,30 +70,30 @@ router.get('/status', (req, res) => {
 function getSuggestions(intent) {
   const suggestions = {
     recommendation: [
-      'كيف أطبق هذه التوصيات؟',
-      'ما هي الأولوية في التطبيق؟',
-      'اقترح المزيد من الحلول'
+      'How do I apply these recommendations?',
+      'What is the priority for implementation?',
+      'Suggest more solutions'
     ],
     risk_analysis: [
-      'كيف نقلل هذه المخاطر؟',
-      'ما هي الإجراءات العاجلة؟',
-      'تحليل تأثير المخاطر'
+      'How do we reduce these risks?',
+      'What are the urgent actions?',
+      'Analyze risk impact'
     ],
     performance: [
-      'كيف نحسن الأداء؟',
-      'ما هي معوقات الأداء؟',
-      'مقارنة مع السبرينتات السابقة'
+      'How do we improve performance?',
+      'What are the performance blockers?',
+      'Compare with previous sprints'
     ],
     team_management: [
-      'كيف نحسن توزيع المهام؟',
-      'من يحتاج مساعدة في الفريق؟',
-      'اقتراحات لتحسين التعاون'
+      'How do we improve task distribution?',
+      'Who needs help in the team?',
+      'Suggestions for improving collaboration'
     ],
     general: [
-      'كيف يبدو أداء السبرينت؟',
-      'ما هي المخاطر الحالية؟',
-      'اقترح توصيات للتحسين',
-      'هل سننجح في الموعد المحدد؟'
+      'How is the sprint performing?',
+      'What are the current risks?',
+      'Suggest recommendations for improvement',
+      'Will we succeed on time?'
     ]
   };
   
@@ -233,37 +233,37 @@ async function generateAIResponse(message, sprintData, context) {
   const lowerMessage = message.toLowerCase();
   
   // Sprint goals queries
-  if (lowerMessage.includes('أهداف') || lowerMessage.includes('هدف') || lowerMessage.includes('goals')) {
+  if (lowerMessage.includes('goals') || lowerMessage.includes('objective') || lowerMessage.includes('target')) {
     return generateGoalsResponse(sprintData);
   }
   
   // Sprint status queries
-  if (lowerMessage.includes('وضع السبرينت') || lowerMessage.includes('حالة السبرينت') || lowerMessage.includes('كيف يبدو')) {
+  if (lowerMessage.includes('status') || lowerMessage.includes('how') || lowerMessage.includes('performing')) {
     return generateSprintStatusResponse(sprintData);
   }
   
   // Risk analysis queries
-  if (lowerMessage.includes('مخاطر') || lowerMessage.includes('مشاكل') || lowerMessage.includes('تحديات')) {
+  if (lowerMessage.includes('risk') || lowerMessage.includes('problem') || lowerMessage.includes('challenge')) {
     return generateRiskAnalysisResponse(sprintData);
   }
   
   // Recommendations queries
-  if (lowerMessage.includes('توصيات') || lowerMessage.includes('اقتراحات') || lowerMessage.includes('حلول')) {
+  if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest') || lowerMessage.includes('solution')) {
     return generateRecommendationsResponse(sprintData);
   }
   
   // Velocity and performance queries
-  if (lowerMessage.includes('سرعة') || lowerMessage.includes('أداء') || lowerMessage.includes('velocity')) {
+  if (lowerMessage.includes('velocity') || lowerMessage.includes('performance') || lowerMessage.includes('speed')) {
     return generateVelocityResponse(sprintData);
   }
   
   // Team queries
-  if (lowerMessage.includes('فريق') || lowerMessage.includes('team') || lowerMessage.includes('أعضاء')) {
+  if (lowerMessage.includes('team') || lowerMessage.includes('member') || lowerMessage.includes('assign')) {
     return generateTeamResponse(sprintData);
   }
   
   // Prediction queries
-  if (lowerMessage.includes('توقع') || lowerMessage.includes('هل سننجح') || lowerMessage.includes('prediction')) {
+  if (lowerMessage.includes('predict') || lowerMessage.includes('will we succeed') || lowerMessage.includes('finish')) {
     return generatePredictionResponse(sprintData);
   }
   
@@ -336,7 +336,7 @@ ${goalsText}
 function generateSprintStatusResponse(data) {
   if (!data) {
     return {
-      content: 'عذراً، لا أستطيع الوصول لبيانات السبرينت حالياً. يرجى المحاولة لاحقاً.',
+      content: 'Sorry, I cannot access sprint data at the moment. Please try again later.',
       suggestions: []
     };
   }
@@ -347,42 +347,42 @@ function generateSprintStatusResponse(data) {
   let emoji = '';
   
   if (metrics.completionRate >= 80) {
-    status = 'ممتاز';
+    status = 'Excellent';
     emoji = '🎉';
   } else if (metrics.completionRate >= 60) {
-    status = 'جيد';
+    status = 'Good';
     emoji = '👍';
   } else if (metrics.completionRate >= 40) {
-    status = 'يحتاج تحسين';
+    status = 'Needs Improvement';
     emoji = '⚠️';
   } else {
-    status = 'يحتاج تدخل عاجل';
+    status = 'Needs Urgent Attention';
     emoji = '🚨';
   }
 
-  const content = `${emoji} **وضع السبرينت الحالي: ${status}**
+  const content = `${emoji} **Current Sprint Status: ${status}**
 
-📊 **الإحصائيات:**
-• المهام المكتملة: ${tasks.completed}/${tasks.total} (${metrics.completionRate.toFixed(1)}%)
-• النقاط المكتملة: ${storyPoints.completed}/${storyPoints.total}
-• المهام قيد التنفيذ: ${tasks.inProgress}
-• المهام المحجوبة: ${tasks.blocked}
+📊 **Statistics:**
+• Completed Tasks: ${tasks.completed}/${tasks.total} (${metrics.completionRate.toFixed(1)}%)
+• Completed Story Points: ${storyPoints.completed}/${storyPoints.total}
+• Tasks In Progress: ${tasks.inProgress}
+• Blocked Tasks: ${tasks.blocked}
 
-⏰ **الوقت المتبقي:** ${data.sprint.daysRemaining} أيام
+⏰ **Time Remaining:** ${data.sprint.daysRemaining} days
 
-📈 **الاتجاه:** ${
-    metrics.burndownTrend === 'improving' ? 'تحسن مستمر 📈' :
-    metrics.burndownTrend === 'declining' ? 'تراجع في الأداء 📉' :
-    'مستقر 📊'
+📈 **Trend:** ${
+    metrics.burndownTrend === 'improving' ? 'Continuous Improvement 📈' :
+    metrics.burndownTrend === 'declining' ? 'Performance Decline 📉' :
+    'Stable 📊'
   }`;
 
   return {
     content,
     suggestions: [
-      'ما هي أكبر المخاطر؟',
-      'اقترح حلول للتحسين',
-      'تحليل أداء الفريق',
-      'هل سننجح في الموعد؟'
+      'What are the biggest risks?',
+      'Suggest solutions for improvement',
+      'Analyze team performance',
+      'Will we succeed on time?'
     ]
   };
 }
@@ -390,7 +390,7 @@ function generateSprintStatusResponse(data) {
 function generateRiskAnalysisResponse(data) {
   if (!data) {
     return {
-      content: 'لا يمكنني تحليل المخاطر بدون بيانات السبرينت.',
+      content: 'I cannot analyze risks without sprint data.',
       suggestions: []
     };
   }
@@ -398,38 +398,38 @@ function generateRiskAnalysisResponse(data) {
   const risks = [];
   
   if (data.metrics.completionRate < 50) {
-    risks.push('🚨 **معدل الإنجاز منخفض**: ' + data.metrics.completionRate.toFixed(1) + '% فقط مكتمل');
+    risks.push('🚨 **Low Completion Rate**: Only ' + data.metrics.completionRate.toFixed(1) + '% completed');
   }
   
   if (data.tasks.blocked > 2) {
-    risks.push('🚫 **مهام محجوبة كثيرة**: ' + data.tasks.blocked + ' مهام تحتاج حل عاجل');
+    risks.push('🚫 **Too Many Blocked Tasks**: ' + data.tasks.blocked + ' tasks need urgent resolution');
   }
   
   if (data.sprint.daysRemaining < 3 && data.metrics.completionRate < 70) {
-    risks.push('⏰ **ضغط الوقت**: وقت قليل متبقي مع إنجاز غير كافي');
+    risks.push('⏰ **Time Pressure**: Little time remaining with insufficient completion');
   }
   
   const largeTasks = data.tasks.total - data.tasks.completed - data.tasks.inProgress - data.tasks.blocked;
   if (largeTasks > 5) {
-    risks.push('📋 **مهام كثيرة لم تبدأ**: ' + largeTasks + ' مهام لم تبدأ بعد');
+    risks.push('📋 **Too Many Unstarted Tasks**: ' + largeTasks + ' tasks haven\'t started yet');
   }
 
   let content = '';
   
   if (risks.length === 0) {
-    content = '✅ **ممتاز! لا توجد مخاطر كبيرة حالياً**\n\nالسبرينت يسير بشكل جيد. استمروا على نفس الوتيرة!';
+    content = '✅ **Excellent! No major risks detected**\n\nThe sprint is going well. Keep up the good work!';
   } else {
-    content = `⚠️ **تحليل المخاطر - تم اكتشاف ${risks.length} مخاطر:**\n\n` + risks.join('\n\n');
-    content += '\n\n💡 **التوصية:** يُنصح بمراجعة هذه المخاطر مع الفريق واتخاذ إجراءات فورية.';
+    content = `⚠️ **Risk Analysis - ${risks.length} risks detected:**\n\n` + risks.join('\n\n');
+    content += '\n\n💡 **Recommendation:** Review these risks with the team and take immediate action.';
   }
 
   return {
     content,
     suggestions: [
-      'اقترح حلول لهذه المخاطر',
-      'كيف نحسن معدل الإنجاز؟',
-      'ما هي الأولويات العاجلة؟',
-      'تحليل أداء الفريق'
+      'Suggest solutions for these risks',
+      'How do we improve completion rate?',
+      'What are the urgent priorities?',
+      'Analyze team performance'
     ]
   };
 }
@@ -595,26 +595,26 @@ ${successProbability < 70 ? `
 
 function generateDefaultResponse(data) {
   const goalsInfo = data.goals && data.goals.length > 0 
-    ? `\n\n🎯 **أهداف السبرينت الحالية:**\n${data.goals.map(g => `• ${g.title} (${g.priority})`).join('\n')}`
+    ? `\n\n🎯 **Current Sprint Goals:**\n${data.goals.map(g => `• ${g.title} (${g.priority})`).join('\n')}`
     : '';
 
   return {
-    content: `مرحباً! أنا Rovo، مساعدك الذكي في إدارة السبرينت. 
+    content: `Hello! I'm Rovo, your smart sprint management assistant. 
 
-يمكنني مساعدتك في:
-🔍 **تحليل وضع السبرينت الحالي**
-📊 **فهم المقاييس والبيانات** 
-⚠️ **تحديد المخاطر والمشاكل**
-💡 **اقتراح حلول وتوصيات**
-🎯 **توقع نتائج السبرينت**
-👥 **تحليل أداء الفريق**${goalsInfo}
+I can help you with:
+🔍 **Analyze current sprint status**
+📊 **Understand metrics and data** 
+⚠️ **Identify risks and problems**
+💡 **Suggest solutions and recommendations**
+🎯 **Predict sprint outcomes**
+👥 **Analyze team performance**${goalsInfo}
 
-ما الذي تريد معرفته عن سبرينتك؟`,
+What would you like to know about your sprint?`,
     suggestions: [
-      'كيف يبدو أداء السبرينت؟',
-      'ما هي المخاطر الحالية؟',
-      'اقترح توصيات للتحسين',
-      'هل سننجح في الموعد المحدد؟'
+      'How is the sprint performing?',
+      'What are the current risks?',
+      'Suggest recommendations for improvement',
+      'Will we succeed on time?'
     ]
   };
 }

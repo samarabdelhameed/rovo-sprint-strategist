@@ -286,7 +286,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-8 glass-card p-6"
                 >
-                    <SprintProgress issues={sprintData?.issues} loading={loading} />
+                    <SprintProgress issues={sprint?.issues} loading={loading} />
                 </motion.div>
 
                 {/* Risk Radar */}
@@ -301,7 +301,7 @@ export default function Dashboard() {
                     variants={itemVariants}
                     className="col-span-12 lg:col-span-6 glass-card p-6"
                 >
-                    <TeamActivity teamMetrics={sprintData?.teamMetrics} loading={loading} />
+                    <TeamActivity teamMetrics={sprint?.teamMetrics} loading={loading} />
                 </motion.div>
 
                 {/* Quick Actions */}

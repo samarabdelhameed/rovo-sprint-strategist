@@ -172,7 +172,7 @@ export async function processAIChat(message, context = {}) {
                 max_tokens: 512,
                 messages: [{ 
                     role: 'user', 
-                    content: `أنت مساعد ذكي لإدارة السبرينت. أجب على هذا السؤال: ${message}` 
+                    content: `You are a smart assistant for sprint management. Answer this question in English: ${message}` 
                 }]
             });
 
@@ -190,7 +190,7 @@ export async function processAIChat(message, context = {}) {
     // Final fallback
     return {
         success: false,
-        response: 'عذراً، خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً.',
+        response: 'Sorry, AI service is currently unavailable. Please try again later.',
         error: 'AI service unavailable'
     };
 }
@@ -218,12 +218,12 @@ export async function analyzeRisks(sprintData) {
         risks: [
             {
                 id: 'general_risk',
-                title: 'مخاطر عامة',
-                description: 'تحليل المخاطر الأساسي متاح',
+                title: 'General Risk',
+                description: 'Basic risk analysis available',
                 severity: 'medium'
             }
         ],
-        recommendations: ['مراجعة دورية للمخاطر'],
+        recommendations: ['Regular risk review'],
         analysis: {
             totalRisks: 1,
             highRisks: 0,

@@ -26,8 +26,8 @@ class FreeAiService {
                 recommendations.push({
                     type: 'performance',
                     priority: 'high',
-                    title: 'تحسين معدل إنجاز المهام',
-                    description: `معدل الإنجاز الحالي ${analysis.completionRate}%. يُنصح بتقليل عدد المهام أو زيادة وقت السبرينت.`,
+                    title: 'Improve Task Completion Rate',
+                    description: `Current completion rate is ${analysis.completionRate}%. Consider reducing scope or extending sprint duration.`,
                     action: 'reduce_scope',
                     impact: 'high'
                 });
@@ -38,8 +38,8 @@ class FreeAiService {
                 recommendations.push({
                     type: 'velocity',
                     priority: 'medium',
-                    title: 'تحسين سرعة الفريق',
-                    description: 'سرعة الفريق في انخفاض. يُنصح بمراجعة العوائق وتحسين العمليات.',
+                    title: 'Improve Team Velocity',
+                    description: 'Team velocity is declining. Review blockers and improve processes.',
                     action: 'improve_process',
                     impact: 'medium'
                 });
@@ -50,8 +50,8 @@ class FreeAiService {
                 recommendations.push({
                     type: 'workload',
                     priority: 'medium',
-                    title: 'توزيع أفضل للمهام',
-                    description: 'يوجد عدم توازن في توزيع المهام بين أعضاء الفريق.',
+                    title: 'Better Task Distribution',
+                    description: 'There is workload imbalance among team members.',
                     action: 'redistribute_tasks',
                     impact: 'medium'
                 });
@@ -63,7 +63,7 @@ class FreeAiService {
                 recommendations.push({
                     type: 'risk',
                     priority: risk.severity,
-                    title: `إدارة المخاطر: ${risk.title}`,
+                    title: `Risk Management: ${risk.title}`,
                     description: risk.description,
                     action: risk.mitigation,
                     impact: risk.severity
@@ -81,7 +81,7 @@ class FreeAiService {
             console.error('Error generating recommendations:', error);
             return {
                 success: false,
-                error: 'فشل في توليد التوصيات',
+                error: 'Failed to generate recommendations',
                 recommendations: []
             };
         }
@@ -106,7 +106,7 @@ class FreeAiService {
             console.error('Error processing chat:', error);
             return {
                 success: false,
-                response: 'عذراً، حدث خطأ في معالجة رسالتك. يرجى المحاولة مرة أخرى.',
+                response: 'Sorry, there was an error processing your message. Please try again.',
                 error: error.message
             };
         }
@@ -137,7 +137,7 @@ class FreeAiService {
             console.error('Error analyzing risks:', error);
             return {
                 success: false,
-                error: 'فشل في تحليل المخاطر',
+                error: 'Failed to analyze risks',
                 risks: []
             };
         }
@@ -204,8 +204,8 @@ class FreeAiService {
         if (daysLeft < 3 && analysis.completionRate < 80) {
             risks.push({
                 id: 'time_pressure',
-                title: 'ضغط الوقت',
-                description: `باقي ${daysLeft} أيام فقط ومعدل الإنجاز ${analysis.completionRate}%`,
+                title: 'Time Pressure',
+                description: `Only ${daysLeft} days left with ${analysis.completionRate}% completion rate`,
                 severity: 'high',
                 mitigation: 'prioritize_critical_tasks'
             });
@@ -215,8 +215,8 @@ class FreeAiService {
         if (analysis.totalTasks > 20) {
             risks.push({
                 id: 'scope_overload',
-                title: 'زيادة في النطاق',
-                description: `عدد المهام (${analysis.totalTasks}) قد يكون كثير للسبرينت`,
+                title: 'Scope Overload',
+                description: `Task count (${analysis.totalTasks}) may be too high for this sprint`,
                 severity: 'medium',
                 mitigation: 'reduce_scope'
             });
@@ -226,8 +226,8 @@ class FreeAiService {
         if (analysis.workloadImbalance > 0.4) {
             risks.push({
                 id: 'workload_imbalance',
-                title: 'عدم توازن الأحمال',
-                description: 'توزيع غير متوازن للمهام بين أعضاء الفريق',
+                title: 'Workload Imbalance',
+                description: 'Uneven task distribution among team members',
                 severity: 'medium',
                 mitigation: 'redistribute_workload'
             });
@@ -259,16 +259,16 @@ class FreeAiService {
         risks.forEach(risk => {
             switch (risk.mitigation) {
                 case 'prioritize_critical_tasks':
-                    strategies.push('ركز على المهام الحرجة أولاً');
+                    strategies.push('Focus on critical tasks first');
                     break;
                 case 'reduce_scope':
-                    strategies.push('قلل من نطاق السبرينت');
+                    strategies.push('Reduce sprint scope');
                     break;
                 case 'redistribute_workload':
-                    strategies.push('أعد توزيع المهام بين الفريق');
+                    strategies.push('Redistribute tasks among team members');
                     break;
                 default:
-                    strategies.push('راجع العمليات وحسن الأداء');
+                    strategies.push('Review processes and improve performance');
             }
         });
 
@@ -278,16 +278,16 @@ class FreeAiService {
     detectIntent(message) {
         const msg = message.toLowerCase();
         
-        if (msg.includes('توصية') || msg.includes('نصيحة') || msg.includes('اقتراح')) {
+        if (msg.includes('recommend') || msg.includes('suggest') || msg.includes('advice')) {
             return 'recommendation';
         }
-        if (msg.includes('مخاطر') || msg.includes('خطر') || msg.includes('مشكلة')) {
+        if (msg.includes('risk') || msg.includes('problem') || msg.includes('issue')) {
             return 'risk_analysis';
         }
-        if (msg.includes('أداء') || msg.includes('سرعة') || msg.includes('إنجاز')) {
+        if (msg.includes('performance') || msg.includes('velocity') || msg.includes('progress')) {
             return 'performance';
         }
-        if (msg.includes('فريق') || msg.includes('عضو') || msg.includes('توزيع')) {
+        if (msg.includes('team') || msg.includes('member') || msg.includes('assign')) {
             return 'team_management';
         }
         
@@ -312,52 +312,52 @@ class FreeAiService {
     getRecommendationTemplates() {
         return {
             performance: [
-                'لتحسين الأداء، يُنصح بمراجعة العمليات الحالية',
-                'ركز على المهام ذات الأولوية العالية',
-                'قم بتحليل العوائق وإزالتها'
+                'To improve performance, I recommend reviewing current processes',
+                'Focus on high-priority tasks first',
+                'Analyze and remove blockers'
             ],
             velocity: [
-                'لزيادة سرعة الفريق، حسن التواصل',
-                'استخدم أدوات أتمتة أكثر',
-                'قلل من الاجتماعات غير الضرورية'
+                'To increase team velocity, improve communication',
+                'Use more automation tools',
+                'Reduce unnecessary meetings'
             ]
         };
     }
 
     getRiskAnalysisTemplates() {
         return {
-            high: 'خطر عالي - يتطلب تدخل فوري',
-            medium: 'خطر متوسط - يحتاج متابعة',
-            low: 'خطر منخفض - للمراقبة'
+            high: 'High risk - requires immediate intervention',
+            medium: 'Medium risk - needs monitoring',
+            low: 'Low risk - for observation'
         };
     }
 
     getChatResponseTemplates() {
         return {
             recommendation: [
-                'بناءً على تحليل البيانات، أنصح بالتركيز على المهام الحرجة أولاً.',
-                'يمكنني مساعدتك في تحسين أداء الفريق من خلال تحليل البيانات الحالية.',
-                'معدل الإنجاز الحالي {completion_rate}% من أصل {total_tasks} مهمة.'
+                'Based on data analysis, I recommend focusing on critical tasks first.',
+                'I can help improve team performance through current data analysis.',
+                'Current completion rate is {completion_rate}% out of {total_tasks} tasks.'
             ],
             risk_analysis: [
-                'دعني أحلل المخاطر المحتملة في السبرينت الحالي.',
-                'المخاطر الرئيسية تشمل ضغط الوقت وتوزيع المهام.',
-                'يمكنني تقديم استراتيجيات لتقليل المخاطر.'
+                'Let me analyze potential risks in the current sprint.',
+                'Main risks include time pressure and task distribution.',
+                'I can provide strategies to mitigate risks.'
             ],
             performance: [
-                'أداء الفريق يمكن تحسينه من خلال تحليل البيانات.',
-                'السرعة الحالية جيدة، لكن يمكن تحسينها أكثر.',
-                'معدل الإنجاز يشير إلى أداء {completion_rate}%.'
+                'Team performance can be improved through data analysis.',
+                'Current velocity is good, but can be improved further.',
+                'Completion rate indicates {completion_rate}% performance.'
             ],
             team_management: [
-                'إدارة الفريق تتطلب توزيع متوازن للمهام.',
-                'التواصل الفعال مفتاح نجاح الفريق.',
-                'يمكنني مساعدتك في تحليل أداء كل عضو في الفريق.'
+                'Team management requires balanced task distribution.',
+                'Effective communication is key to team success.',
+                'I can help analyze each team member\'s performance.'
             ],
             general: [
-                'كيف يمكنني مساعدتك في تحسين إدارة السبرينت؟',
-                'أنا هنا لمساعدتك في تحليل البيانات وتقديم التوصيات.',
-                'ما الذي تريد معرفته عن أداء فريقك؟'
+                'How can I help you improve sprint management?',
+                'I\'m here to help analyze data and provide recommendations.',
+                'What would you like to know about your team\'s performance?'
             ]
         };
     }
