@@ -195,9 +195,9 @@ router.post('/test-connection', async (req, res) => {
       
       // Provide helpful suggestions based on error type
       if (response.status === 404) {
-        suggestion = 'The Jira instance URL appears to be incorrect or the instance doesn\'t exist. You can:\n\n1. Create a new free Jira instance at https://www.atlassian.com/software/jira/free\n2. Verify the correct URL for your existing instance\n3. Use Demo Mode to test the application with sample data';
+        suggestion = 'The Jira instance URL appears to be incorrect or the instance doesn\'t exist. You can:\n\n1. Create a new free Jira instance at https://www.atlassian.com/software/jira/free\n2. Verify the correct URL for your existing instance\n3. Use "Simulation Mode (Demo)" below to test the application with sample data';
       } else if (response.status === 401 || response.status === 403) {
-        suggestion = 'Authentication failed. Please check:\n\n1. Your email address is correct\n2. Your API token is valid and hasn\'t expired\n3. You have access to the Jira instance';
+        suggestion = 'Authentication failed. Please check:\n\n1. Your email address is correct\n2. Your API token is valid and hasn\'t expired\n3. You have access to the Jira instance\n4. Or use "Simulation Mode (Demo)" to test with sample data';
       }
       
       return res.json({
@@ -223,7 +223,9 @@ router.post('/test-connection', async (req, res) => {
     
     let suggestion = '';
     if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      suggestion = 'Cannot reach the Jira server. Please check:\n\n1. Your internet connection\n2. The Jira URL is correct\n3. The Jira instance exists and is accessible';
+      suggestion = 'Cannot reach the Jira server. You can:\n\n1. Check your internet connection\n2. Verify the Jira URL is correct\n3. Create a new Jira instance if needed\n4. Use "Simulation Mode (Demo)" to test with sample data';
+    } else {
+      suggestion = 'Connection failed. You can:\n\n1. Check your Jira credentials\n2. Verify the instance URL\n3. Use "Simulation Mode (Demo)" to test the application';
     }
     
     res.json({ 

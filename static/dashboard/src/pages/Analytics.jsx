@@ -34,9 +34,17 @@ const itemVariants = {
 
 // Simple Bar Chart Component
 function BarChart({ data, maxValue, label }) {
+    if (!data || data.length === 0) return null
+    
+    // Filter out invalid data and ensure we have valid numbers
+    const validData = data.filter(item => item && typeof item.value === 'number' && !isNaN(item.value))
+    if (validData.length === 0) return null
+    
+    const safeMaxValue = maxValue && !isNaN(maxValue) ? maxValue : Math.max(...validData.map(item => item.value))
+    
     return (
         <div className="space-y-2">
-            {data.map((item, idx) => (
+            {validData.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                     <span className="w-20 text-xs text-text-muted truncate">{item.label}</span>
                     <div className="flex-1 h-6 bg-dark-700 rounded-full overflow-hidden">
@@ -44,7 +52,7 @@ function BarChart({ data, maxValue, label }) {
                             className="h-full rounded-full"
                             style={{ backgroundColor: item.color || '#f97316' }}
                             initial={{ width: 0 }}
-                            animate={{ width: `${(item.value / maxValue) * 100}%` }}
+                            animate={{ width: `${(item.value / safeMaxValue) * 100}%` }}
                             transition={{ duration: 0.8, delay: idx * 0.1 }}
                         />
                     </div>
@@ -57,7 +65,15 @@ function BarChart({ data, maxValue, label }) {
 
 // Donut Chart Component
 function DonutChart({ data, size = 150 }) {
-    const total = data.reduce((sum, item) => sum + item.count, 0)
+    if (!data || data.length === 0) return null
+    
+    // Filter out invalid data
+    const validData = data.filter(item => item && typeof item.count === 'number' && !isNaN(item.count) && item.count > 0)
+    if (validData.length === 0) return null
+    
+    const total = validData.reduce((sum, item) => sum + item.count, 0)
+    if (total === 0) return null
+    
     let cumulativePercent = 0
 
     const getCoordinatesForPercent = (percent) => {
@@ -69,7 +85,7 @@ function DonutChart({ data, size = 150 }) {
     return (
         <div className="flex items-center justify-center gap-6">
             <svg width={size} height={size} viewBox="-1.1 -1.1 2.2 2.2">
-                {data.map((slice, idx) => {
+                {validData.map((slice, idx) => {
                     const percent = slice.count / total
                     const [startX, startY] = getCoordinatesForPercent(cumulativePercent)
                     cumulativePercent += percent
@@ -102,7 +118,7 @@ function DonutChart({ data, size = 150 }) {
                 </text>
             </svg>
             <div className="space-y-2">
-                {data.map((item, idx) => (
+                {validData.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-sm">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                         <span className="text-text-muted">{item.status}</span>
@@ -118,12 +134,16 @@ function DonutChart({ data, size = 150 }) {
 function TrendChart({ data, height = 150 }) {
     if (!data || data.length === 0) return null
 
-    const maxValue = Math.max(...data.map(d => d.value))
-    const minValue = Math.min(...data.map(d => d.value))
+    // Filter out invalid data and ensure we have valid numbers
+    const validData = data.filter(d => d && typeof d.value === 'number' && !isNaN(d.value))
+    if (validData.length === 0) return null
+
+    const maxValue = Math.max(...validData.map(d => d.value))
+    const minValue = Math.min(...validData.map(d => d.value))
     const range = maxValue - minValue || 1
 
-    const points = data.map((d, i) => {
-        const x = (i / (data.length - 1)) * 100
+    const points = validData.map((d, i) => {
+        const x = validData.length > 1 ? (i / (validData.length - 1)) * 100 : 50
         const y = 100 - ((d.value - minValue) / range) * 80
         return `${x},${y}`
     }).join(' ')
@@ -161,8 +181,8 @@ function TrendChart({ data, height = 150 }) {
                 />
 
                 {/* Dots */}
-                {data.map((d, i) => {
-                    const x = (i / (data.length - 1)) * 100
+                {validData.map((d, i) => {
+                    const x = validData.length > 1 ? (i / (validData.length - 1)) * 100 : 50
                     const y = 100 - ((d.value - minValue) / range) * 80
                     return (
                         <motion.circle
@@ -188,7 +208,7 @@ function TrendChart({ data, height = 150 }) {
 
             {/* Labels */}
             <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-text-muted px-2">
-                {data.map((d, i) => (
+                {validData.map((d, i) => (
                     <span key={i}>{d.label}</span>
                 ))}
             </div>

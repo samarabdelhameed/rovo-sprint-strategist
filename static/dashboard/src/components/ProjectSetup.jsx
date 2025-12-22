@@ -269,11 +269,18 @@ const ProjectSetup = ({ onComplete }) => {
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
-                                        className={`p-4 rounded-xl border flex items-center gap-4 ${connectionResult.success ? 'bg-success/10 border-success/30 text-success' : 'bg-danger/10 border-danger/30 text-danger'
+                                        className={`p-4 rounded-xl border flex flex-col gap-3 ${connectionResult.success ? 'bg-success/10 border-success/30 text-success' : 'bg-danger/10 border-danger/30 text-danger'
                                             }`}
                                     >
-                                        {connectionResult.success ? <Check className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-                                        <span className="font-semibold">{connectionResult.success ? 'Connection Synchronized!' : connectionResult.error}</span>
+                                        <div className="flex items-center gap-4">
+                                            {connectionResult.success ? <Check className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+                                            <span className="font-semibold">{connectionResult.success ? 'Connection Synchronized!' : connectionResult.error}</span>
+                                        </div>
+                                        {!connectionResult.success && connectionResult.suggestion && (
+                                            <div className="text-sm text-text-muted bg-dark-800/50 p-3 rounded-lg border border-dark-600">
+                                                <div className="whitespace-pre-line">{connectionResult.suggestion}</div>
+                                            </div>
+                                        )}
                                     </motion.div>
                                 )}
                             </motion.div>
