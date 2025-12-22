@@ -41,10 +41,10 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@forge/cli": "^10.0.0",
     "@babel/core": "^7.23.7",
     "@babel/preset-env": "^7.23.8",
     "@babel/preset-react": "^7.23.3",
+    "@forge/cli": "^10.13.6",
     "@types/jest": "^29.5.11",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",

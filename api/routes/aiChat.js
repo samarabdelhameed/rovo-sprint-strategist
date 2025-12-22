@@ -274,19 +274,19 @@ async function generateAIResponse(message, sprintData, context) {
 function generateGoalsResponse(data) {
   if (!data || !data.goals) {
     return {
-      content: 'لا يمكنني الوصول لبيانات أهداف السبرينت حالياً.',
+      content: 'I cannot access sprint goals data at the moment.',
       suggestions: []
     };
   }
 
   if (data.goals.length === 0) {
     return {
-      content: '📋 **لا توجد أهداف محددة للسبرينت الحالي**\n\nيُنصح بإضافة أهداف واضحة لتحسين التركيز والإنتاجية.',
+      content: '📋 **No goals defined for current sprint**\n\nI recommend adding clear goals to improve focus and productivity.',
       suggestions: [
-        'كيف أضيف أهداف للسبرينت؟',
-        'ما هي أفضل الممارسات للأهداف؟',
-        'تحليل أداء السبرينت',
-        'اقتراحات لتحسين التخطيط'
+        'How do I add goals to the sprint?',
+        'What are the best practices for goals?',
+        'Analyze sprint performance',
+        'Suggestions for improving planning'
       ]
     };
   }
@@ -302,33 +302,33 @@ function generateGoalsResponse(data) {
     const priorityEmoji = goal.priority === 'high' ? '🔴' : 
                          goal.priority === 'medium' ? '🟡' : '🟢';
     
-    return `${index + 1}. ${statusEmoji} **${goal.title}** ${priorityEmoji}\n   📝 ${goal.description || 'لا يوجد وصف'}\n   📊 التقدم: ${progress}% (${goal.current_value || 0}/${goal.target_value} ${goal.unit})`;
+    return `${index + 1}. ${statusEmoji} **${goal.title}** ${priorityEmoji}\n   📝 ${goal.description || 'No description'}\n   📊 Progress: ${progress}% (${goal.current_value || 0}/${goal.target_value} ${goal.unit})`;
   }).join('\n\n');
 
   const completedGoals = data.goals.filter(g => g.status === 'completed').length;
   const totalGoals = data.goals.length;
   const overallProgress = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
 
-  const content = `🎯 **أهداف السبرينت الحالية:**
+  const content = `🎯 **Current Sprint Goals:**
 
 ${goalsText}
 
-📈 **الملخص العام:**
-• إجمالي الأهداف: ${totalGoals}
-• المكتملة: ${completedGoals}
-• التقدم الإجمالي: ${overallProgress}%
+📈 **Overall Summary:**
+• Total Goals: ${totalGoals}
+• Completed: ${completedGoals}
+• Overall Progress: ${overallProgress}%
 
-💡 **التوصية:** ${overallProgress >= 70 ? 'أداء ممتاز! استمر على نفس الوتيرة' : 
-  overallProgress >= 40 ? 'تقدم جيد، ركز على الأهداف عالية الأولوية' : 
-  'يحتاج تركيز أكبر على تحقيق الأهداف'}`;
+💡 **Recommendation:** ${overallProgress >= 70 ? 'Excellent performance! Keep up the pace' : 
+  overallProgress >= 40 ? 'Good progress, focus on high-priority goals' : 
+  'Needs more focus on achieving goals'}`;
 
   return {
     content,
     suggestions: [
-      'كيف أحسن تحقيق الأهداف؟',
-      'ما هي الأهداف المتأخرة؟',
-      'اقترح خطة لتسريع التقدم',
-      'تحليل أداء السبرينت العام'
+      'How can I improve goal achievement?',
+      'What are the delayed goals?',
+      'Suggest a plan to accelerate progress',
+      'Analyze overall sprint performance'
     ]
   };
 }
@@ -438,30 +438,30 @@ function generateRecommendationsResponse(data) {
   const recommendations = [];
   
   if (data.metrics.completionRate < 60) {
-    recommendations.push('🎯 **تقليل النطاق**: إزالة المهام غير الضرورية لضمان إنجاز الأساسيات');
+    recommendations.push('🎯 **Reduce Scope**: Remove non-essential tasks to ensure completion of basics');
   }
   
   if (data.tasks.blocked > 1) {
-    recommendations.push('🚫 **حل المهام المحجوبة**: تصعيد المشاكل للإدارة أو إيجاد حلول بديلة');
+    recommendations.push('🚫 **Resolve Blocked Tasks**: Escalate issues to management or find alternative solutions');
   }
   
   if (data.tasks.inProgress > data.team.length * 2) {
-    recommendations.push('⚡ **تركيز الجهود**: تقليل المهام المتوازية والتركيز على الإنهاء');
+    recommendations.push('⚡ **Focus Efforts**: Reduce parallel tasks and focus on completion');
   }
   
-  recommendations.push('📊 **مراجعة يومية**: زيادة تكرار المتابعة لاكتشاف المشاكل مبكراً');
-  recommendations.push('👥 **توزيع العبء**: التأكد من توزيع المهام بشكل متوازن على الفريق');
+  recommendations.push('📊 **Daily Review**: Increase follow-up frequency to catch problems early');
+  recommendations.push('👥 **Load Distribution**: Ensure tasks are distributed evenly across the team');
 
-  const content = `💡 **التوصيات الذكية للسبرينت:**\n\n` + 
+  const content = `💡 **Smart Sprint Recommendations:**\n\n` + 
     recommendations.map((rec, index) => `${index + 1}. ${rec}`).join('\n\n');
 
   return {
     content,
     suggestions: [
-      'كيف أطبق هذه التوصيات؟',
-      'ما هي الأولوية في التطبيق؟',
-      'تحليل تأثير كل توصية',
-      'بدائل أخرى للحلول'
+      'How do I apply these recommendations?',
+      'What is the priority for implementation?',
+      'Analyze impact of each recommendation',
+      'Alternative solutions'
     ]
   };
 }
@@ -472,36 +472,36 @@ function generateVelocityResponse(data) {
   
   let performance = '';
   if (velocity >= expectedVelocity * 1.2) {
-    performance = 'ممتاز - أعلى من المتوقع! 🚀';
+    performance = 'Excellent - Above expected! 🚀';
   } else if (velocity >= expectedVelocity * 0.8) {
-    performance = 'جيد - ضمن المعدل المتوقع 👍';
+    performance = 'Good - Within expected range 👍';
   } else {
-    performance = 'أقل من المتوقع - يحتاج تحسين ⚠️';
+    performance = 'Below expected - Needs improvement ⚠️';
   }
 
-  const content = `📈 **تحليل سرعة الفريق (Velocity):**
+  const content = `📈 **Team Velocity Analysis:**
 
-🎯 **الأداء الحالي:** ${performance}
-• النقاط المكتملة: ${velocity}
-• النقاط المتوقعة: ${expectedVelocity.toFixed(1)}
-• معدل الإنجاز: ${((velocity / expectedVelocity) * 100).toFixed(1)}%
+🎯 **Current Performance:** ${performance}
+• Completed Points: ${velocity}
+• Expected Points: ${expectedVelocity.toFixed(1)}
+• Completion Rate: ${((velocity / expectedVelocity) * 100).toFixed(1)}%
 
-📊 **الاتجاه:** ${data.metrics.burndownTrend === 'improving' ? 'تحسن مستمر' : 
-  data.metrics.burndownTrend === 'declining' ? 'تراجع في الأداء' : 'مستقر'}
+📊 **Trend:** ${data.metrics.burndownTrend === 'improving' ? 'Continuous improvement' : 
+  data.metrics.burndownTrend === 'declining' ? 'Performance decline' : 'Stable'}
 
-💡 **نصائح لتحسين السرعة:**
-• تقليل المهام المتوازية
-• حل المعوقات بسرعة
-• تحسين التعاون بين الفريق
-• تقسيم المهام الكبيرة`;
+💡 **Tips to improve velocity:**
+• Reduce parallel tasks
+• Resolve blockers quickly
+• Improve team collaboration
+• Break down large tasks`;
 
   return {
     content,
     suggestions: [
-      'كيف نحسن السرعة؟',
-      'ما هي معوقات الأداء؟',
-      'مقارنة مع السبرينتات السابقة',
-      'تحليل أداء كل عضو'
+      'How do we improve velocity?',
+      'What are the performance blockers?',
+      'Compare with previous sprints',
+      'Analyze each member\'s performance'
     ]
   };
 }
@@ -510,31 +510,31 @@ function generateTeamResponse(data) {
   const teamSize = data.team.length;
   const tasksPerMember = (data.tasks.total / teamSize).toFixed(1);
   
-  const content = `👥 **تحليل الفريق:**
+  const content = `👥 **Team Analysis:**
 
-📊 **إحصائيات عامة:**
-• عدد الأعضاء: ${teamSize}
-• متوسط المهام لكل عضو: ${tasksPerMember}
-• إجمالي المهام: ${data.tasks.total}
+📊 **General Statistics:**
+• Team Members: ${teamSize}
+• Average Tasks per Member: ${tasksPerMember}
+• Total Tasks: ${data.tasks.total}
 
-⚖️ **توزيع العبء:**
+⚖️ **Workload Distribution:**
 ${data.team.map(member => {
   const memberTasks = Math.floor(Math.random() * 5) + 2; // Simulated
-  return `• ${member.name}: ${memberTasks} مهام`;
+  return `• ${member.name}: ${memberTasks} tasks`;
 }).join('\n')}
 
-💡 **ملاحظات:**
-• يُنصح بمراجعة توزيع المهام
-• التأكد من عدم تحميل عضو واحد أكثر من اللازم
-• تشجيع التعاون والمساعدة المتبادلة`;
+💡 **Notes:**
+• Recommend reviewing task distribution
+• Ensure no single member is overloaded
+• Encourage collaboration and mutual support`;
 
   return {
     content,
     suggestions: [
-      'كيف نحسن توزيع المهام؟',
-      'من يحتاج مساعدة في الفريق؟',
-      'تحليل مهارات الفريق',
-      'اقتراحات لتحسين التعاون'
+      'How do we improve task distribution?',
+      'Who needs help in the team?',
+      'Analyze team skills',
+      'Suggestions for improving collaboration'
     ]
   };
 }
@@ -548,47 +548,47 @@ function generatePredictionResponse(data) {
   
   if (completionRate >= 80) {
     successProbability = 95;
-    prediction = 'نعم، بكل تأكيد! 🎉';
+    prediction = 'Yes, absolutely! 🎉';
   } else if (completionRate >= 60) {
     successProbability = 80;
-    prediction = 'على الأرجح نعم 👍';
+    prediction = 'Most likely yes 👍';
   } else if (completionRate >= 40) {
     successProbability = 60;
-    prediction = 'ممكن مع بعض التعديلات ⚠️';
+    prediction = 'Possible with some adjustments ⚠️';
   } else {
     successProbability = 30;
-    prediction = 'صعب بدون تدخل عاجل 🚨';
+    prediction = 'Difficult without urgent intervention 🚨';
   }
 
-  const content = `🔮 **توقع نجاح السبرينت:**
+  const content = `🔮 **Sprint Success Prediction:**
 
 ${prediction}
 
-📊 **احتمالية النجاح:** ${successProbability}%
+📊 **Success Probability:** ${successProbability}%
 
-📈 **التحليل:**
-• معدل الإنجاز الحالي: ${completionRate.toFixed(1)}%
-• الوقت المتبقي: ${daysRemaining} أيام
-• المهام المتبقية: ${data.tasks.total - data.tasks.completed}
+📈 **Analysis:**
+• Current Completion Rate: ${completionRate.toFixed(1)}%
+• Time Remaining: ${daysRemaining} days
+• Remaining Tasks: ${data.tasks.total - data.tasks.completed}
 
 ${successProbability < 70 ? `
-⚡ **إجراءات مطلوبة للنجاح:**
-• تقليل نطاق السبرينت
-• حل المهام المحجوبة فوراً
-• زيادة التركيز على المهام الأساسية
-• مراجعة يومية مكثفة` : `
-✅ **للحفاظ على النجاح:**
-• استمرار على نفس الوتيرة
-• مراقبة المخاطر الجديدة
-• دعم أعضاء الفريق`}`;
+⚡ **Actions Required for Success:**
+• Reduce sprint scope
+• Resolve blocked tasks immediately
+• Increase focus on essential tasks
+• Intensive daily reviews` : `
+✅ **To Maintain Success:**
+• Continue at current pace
+• Monitor new risks
+• Support team members`}`;
 
   return {
     content,
     suggestions: [
-      'كيف نضمن النجاح؟',
-      'ما هي أكبر التحديات؟',
-      'خطة الطوارئ إذا تأخرنا',
-      'مراجعة الأولويات'
+      'How do we ensure success?',
+      'What are the biggest challenges?',
+      'Emergency plan if we fall behind',
+      'Review priorities'
     ]
   };
 }
