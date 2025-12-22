@@ -2,8 +2,7 @@
  * 🔔 Alert Manager Service
  */
 
-import { storage } from '@forge/api';.
-import api, { route } from '@forge/api';
+import api, { route, storage } from '@forge/api';
 
 const ALERT_THRESHOLDS = {
     stuckDays: parseInt(process.env.STUCK_TASK_DAYS) || 2,
