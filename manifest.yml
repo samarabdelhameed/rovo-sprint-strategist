@@ -34,13 +34,6 @@ modules:
         2. Identify any blockers or risks
         3. Provide specific, actionable recommendations
         4. Reference data from Jira to support your analysis
-      actions:
-        - analyzeSprintAction
-        - predictVelocityAction
-        - generateStandupAction
-        - suggestPitStopAction
-        - getSprintHealthAction
-        - identifyBlockersAction
 
     - key: standup-assistant-agent
       name: Standup Assistant
@@ -56,95 +49,9 @@ modules:
         - 🔄 In Progress Today
         - 🚫 Blockers
         - 📊 Sprint Status
-      actions:
-        - generateStandupAction
-        - identifyBlockersAction
 
   # ==========================================
   # ROVO ACTIONS
-  # ==========================================
-
-  rovo:action:
-    - key: analyzeSprintAction
-      name: Analyze Sprint
-      description: Analyze sprint health, velocity, and risks
-      function: analyzeSprintHandler
-      inputs:
-        sprintId:
-          type: string
-          title: Sprint ID
-          required: false
-        includeRisks:
-          type: boolean
-          title: Include Risks
-          required: false
-
-    - key: predictVelocityAction
-      name: Predict Velocity
-      description: Predict sprint completion using AI
-      function: predictVelocityHandler
-      inputs:
-        sprintId:
-          type: string
-          title: Sprint ID
-          required: false
-        confidence:
-          type: boolean
-          title: Include Confidence Score
-          required: false
-
-    - key: generateStandupAction
-      name: Generate Standup
-      description: Auto-generate daily standup summary
-      function: generateStandupHandler
-      inputs:
-        sprintId:
-          type: string
-          title: Sprint ID
-          required: false
-        date:
-          type: string
-          title: Date (YYYY-MM-DD)
-          required: false
-
-    - key: suggestPitStopAction
-      name: Suggest Pit-Stop
-      description: Get AI recommendations for sprint adjustments
-      function: suggestPitStopHandler
-      inputs:
-        sprintId:
-          type: string
-          title: Sprint ID
-          required: false
-        urgency:
-          type: string
-          title: Urgency Level (low/medium/high)
-          required: false
-
-    - key: getSprintHealthAction
-      name: Get Sprint Health
-      description: Get current sprint health score (0-100)
-      function: getSprintHealthHandler
-      inputs:
-        sprintId:
-          type: string
-          title: Sprint ID
-          required: false
-
-    - key: identifyBlockersAction
-      name: Identify Blockers
-      description: Find all blocked issues in current sprint
-      function: identifyBlockersHandler
-      inputs:
-        sprintId:
-          type: string
-          title: Sprint ID
-          required: false
-        stuckDays:
-          type: number
-          title: Days Stuck Threshold
-          required: false
-
   # ==========================================
   # TRIGGERS
   # ==========================================
@@ -184,38 +91,38 @@ modules:
   function:
     # Action Handlers
     - key: analyzeSprintHandler
-      handler: src/actions/analyzeSprintAction.handler
+      handler: index.analyzeSprintHandler
 
     - key: predictVelocityHandler
-      handler: src/actions/predictVelocityAction.handler
+      handler: index.predictVelocityHandler
 
     - key: generateStandupHandler
-      handler: src/actions/generateStandupAction.handler
+      handler: index.generateStandupHandler
 
     - key: suggestPitStopHandler
-      handler: src/actions/suggestPitStopAction.handler
+      handler: index.suggestPitStopHandler
 
     - key: getSprintHealthHandler
-      handler: src/actions/getSprintHealthAction.handler
+      handler: index.getSprintHealthHandler
 
     - key: identifyBlockersHandler
-      handler: src/actions/identifyBlockersAction.handler
+      handler: index.identifyBlockersHandler
 
     # Trigger Handlers
     - key: issueCreatedHandler
-      handler: src/triggers/issueCreatedTrigger.handler
+      handler: index.issueCreatedHandler
 
     - key: issueUpdatedHandler
-      handler: src/triggers/issueUpdatedTrigger.handler
+      handler: index.issueUpdatedHandler
 
     - key: sprintStartedHandler
-      handler: src/triggers/sprintStartedTrigger.handler
+      handler: index.sprintStartedHandler
 
     - key: dailyAnalysisHandler
-      handler: src/triggers/scheduledAnalysisTrigger.dailyHandler
+      handler: index.dailyHandler
 
     - key: healthCheckHandler
-      handler: src/triggers/scheduledAnalysisTrigger.healthCheckHandler
+      handler: index.healthCheckHandler
 
 resources:
   - key: dashboard
@@ -228,7 +135,7 @@ resources:
 app:
   id: ari:cloud:ecosystem::app/aa31a6b3-9ec1-49a6-a8e7-35eac7f402ee
   runtime:
-    name: nodejs18.x
+    name: nodejs20.x
 
 permissions:
   scopes:
@@ -238,6 +145,10 @@ permissions:
     - storage:app
     - read:sprint:jira-software
     - write:sprint:jira-software
+    - read:issue-details:jira
+    - read:jql:jira
+    - read:board-scope:jira-software
+    - read:project:jira
   external:
     fetch:
       backend:
