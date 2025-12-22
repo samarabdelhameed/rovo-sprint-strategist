@@ -8,23 +8,6 @@ modules:
     - key: sprint-strategist-dashboard
       title: Sprint Strategist
       resource: dashboard
-      resolver:
-        function: dashboardResolver
-      icon: static/icons/dashboard-icon.svg
-
-  # Sprint Health Panel - Board View
-  jira:boardBackgroundScript:
-    - key: sprint-health-monitor
-      function: sprintHealthMonitor
-
-  # Issue Glance - Individual Issue View
-  jira:issueGlance:
-    - key: issue-risk-indicator
-      title: Risk Assessment
-      resource: issueRisk
-      resolver:
-        function: issueRiskResolver
-      icon: static/icons/risk-icon.svg
 
   # ==========================================
   # ROVO AI AGENTS
@@ -184,11 +167,6 @@ modules:
       events:
         - avi:jira:started:sprint
 
-    - key: sprint-completed-trigger
-      function: sprintCompletedHandler
-      events:
-        - avi:jira:completed:sprint
-
   # Scheduled Triggers
   scheduledTrigger:
     - key: daily-analysis-trigger
@@ -204,17 +182,6 @@ modules:
   # ==========================================
 
   function:
-    # Resolvers
-    - key: dashboardResolver
-      handler: src/panels/dashboardResolver.handler
-
-    - key: issueRiskResolver
-      handler: src/panels/issueRiskResolver.handler
-
-    # Background Scripts
-    - key: sprintHealthMonitor
-      handler: src/triggers/sprintHealthMonitor.handler
-
     # Action Handlers
     - key: analyzeSprintHandler
       handler: src/actions/analyzeSprintAction.handler
@@ -244,9 +211,6 @@ modules:
     - key: sprintStartedHandler
       handler: src/triggers/sprintStartedTrigger.handler
 
-    - key: sprintCompletedHandler
-      handler: src/triggers/sprintCompletedTrigger.handler
-
     - key: dailyAnalysisHandler
       handler: src/triggers/scheduledAnalysisTrigger.dailyHandler
 
@@ -260,9 +224,6 @@ modules:
   resources:
     - key: dashboard
       path: static/dashboard/build
-
-    - key: issueRisk
-      path: static/issue-risk/build
 
 # ==========================================
 # APP CONFIGURATION
