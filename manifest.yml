@@ -217,13 +217,9 @@ modules:
     - key: healthCheckHandler
       handler: src/triggers/scheduledAnalysisTrigger.healthCheckHandler
 
-  # ==========================================
-  # RESOURCES (UI)
-  # ==========================================
-
-  resources:
-    - key: dashboard
-      path: static/dashboard/build
+resources:
+  - key: dashboard
+    path: static/dashboard/build
 
 # ==========================================
 # APP CONFIGURATION
