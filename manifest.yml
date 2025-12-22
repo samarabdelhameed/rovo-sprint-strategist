@@ -270,7 +270,8 @@ modules:
 
 app:
   id: ari:cloud:ecosystem::app/aa31a6b3-9ec1-49a6-a8e7-35eac7f402ee
-  name: Rovo Sprint Strategist
+  runtime:
+    name: nodejs18.x
 
 permissions:
   scopes:
